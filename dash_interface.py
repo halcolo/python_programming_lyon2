@@ -66,6 +66,7 @@ app.layout = html.Div([
     
     # Ajoutez un composant html.Button pour déclencher la mise à jour du tableau avec les statistiques
     html.Button(id='update-stats-button', n_clicks=0, children='Mettre à jour les statistiques')
+
 ])
 
 # Ajoutez un callback pour mettre à jour le contenu de dcc.Store en fonction de la cellule active et de la pagination
@@ -131,19 +132,26 @@ def display_station_usage_histogram(selected_cell_info):
     State('station-input', 'value')
 )
 def update_station_stats_table(n_clicks, station_name):
-    if n_clicks > 0 and station_name:
-        # Filtrer les données pour la station sélectionnée
-        station_data = df[df['Station_Name'] == station_name]
-        
-        # Calculer les statistiques
-        charge_totale = station_data['Usage'].sum()
-        sur_colline = "Oui" if station_data['Sur_Colline'].any() else "Non"
-        
-        # Retourner les statistiques sous forme de liste de dictionnaires
-        return [{'Station_Name': station_name, 'Charge_Totale': charge_totale, 'Sur_Colline': sur_colline}]
-    else:
-        # Retourner une liste vide si le bouton n'a pas été cliqué ou si aucun nom de station n'est saisi
-        return []
+    try:
+        df_stats_table = pd.DataFrame()
+        df_stats_table[['Station_Name', 'Charge_Totale', 'Sur_Colline']] = None 
+        if n_clicks > 0 and station_name:
+            # Filtrer les données pour la station sélectionnée
+            df_stats_table['Station_Name'] == str(station_name)
+            # Calculer les statistiques
+            df_stats_table['Charge_Totale'] = 0
+            df_stats_table['Sur_Colline'] = False
+            # df_stats_table['Sur_Colline'] = "Oui" if df['Sur_Colline'].any() else "Non"
+            
+            # # Retourner les statistiques sous forme de liste de dictionnaires
+            return [{'Station_Name':  df_stats_table['Station_Name'], 
+                     'Charge_Totale':  df_stats_table['Charge_Totale'], 
+                     'Sur_Colline':  df_stats_table['Sur_Colline']}]
+        # else:
+        #     # Retourner une liste vide si le bouton n'a pas été cliqué ou si aucun nom de station n'est saisi
+        #     return []
+    except Exception as e:
+        print(('error :'),e)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
