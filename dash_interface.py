@@ -6,7 +6,7 @@ import plotly.express as px
 import pandas as pd
 
 # Chargez les données Velib
-df = pd.read_excel('C:/Users/hp/Desktop/TD Python/velib.xlsx')
+df = pd.read_excel('/Users/halcolo/Documents/code/lyon2/python_programation/TD8/data/velib.xlsx')
 
 # Créez l'application Dash
 app = dash.Dash(__name__)
@@ -51,7 +51,7 @@ app.layout = html.Div([
     # Ajoutez un nouveau tableau pour calculer la charge totale par station
     html.H2("Tableau de statistiques par station"),
     DataTable(
-        id='station-stats-table',
+        id='station_stats_table',
         columns=[
             {'name': 'Station_Name', 'id': 'Station_Name'},
             {'name': 'Charge_Totale', 'id': 'Charge_Totale'},
@@ -127,26 +127,23 @@ def display_station_usage_histogram(selected_cell_info):
 
 # Ajoutez un callback pour mettre à jour les statistiques par station en fonction du bouton de mise à jour
 @app.callback(
-    Output('station-stats-table', 'data'),
+    Output('station_stats_table', 'data'),
     Input('update-stats-button', 'n_clicks'),
     State('station-input', 'value')
 )
 def update_station_stats_table(n_clicks, station_name):
     try:
-        df_stats_table = pd.DataFrame()
-        df_stats_table[['Station_Name', 'Charge_Totale', 'Sur_Colline']] = None 
         if n_clicks > 0 and station_name:
+            station_data = df[df['Station_Name'] == station_name]
             # Filtrer les données pour la station sélectionnée
-            df_stats_table['Station_Name'] == str(station_name)
+            record = {'Station_Name': station_name, 
+                      'Charge_Totale': station_data['Charge'].sum(), 
+                      'Sur_Colline': False}
+            station_stats_table = pd.DataFrame(record, index=[0])
             # Calculer les statistiques
-            df_stats_table['Charge_Totale'] = 0
-            df_stats_table['Sur_Colline'] = False
-            # df_stats_table['Sur_Colline'] = "Oui" if df['Sur_Colline'].any() else "Non"
-            
+            # station_stats_table['Sur_Colline'] = "Oui" if df['Sur_Colline'].any() else "Non"
             # # Retourner les statistiques sous forme de liste de dictionnaires
-            return [{'Station_Name':  df_stats_table['Station_Name'], 
-                     'Charge_Totale':  df_stats_table['Charge_Totale'], 
-                     'Sur_Colline':  df_stats_table['Sur_Colline']}]
+            return station_stats_table.to_dict('records')
         # else:
         #     # Retourner une liste vide si le bouton n'a pas été cliqué ou si aucun nom de station n'est saisi
         #     return []
