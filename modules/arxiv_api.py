@@ -1,32 +1,42 @@
 import xmltodict
 import datetime
 import requests
-from modules.Document import Document
-from tools.progress_bar import print_progress_bar
+from modules.document import ArxivDocument
+from utils.tools import print_progress_bar
 
 
 class ArxivApi:
-    def __init__(self, keyword: str, start=0, max_results=1):
+    
+    _instance = None
+    
+    #Singleton pattern
+    def __new__(cls, keyword, start=0, max_results=1):
         """
-        Initializes an instance of the ArxivApi class.
+        Initializes a RedditApi object.
+
+        This method is responsible for creating a new instance of the RedditApi class.
         
         Parameters:
-            keyword (str): The keyword to search for in the ArXiv API.
-            start (int): The starting index of the search results (default is 0).
-            max_results (int): The maximum number of results to retrieve (default is 1).
-        """
-        self.keyword = keyword
-        self.start = start
-        self.max_results = max_results
-        self.create_query_string(keyword=self.keyword,
-                                start=self.start,
-                                max_results=self.max_results)
-
-        self.url = None
-        self.data = None
+            subreddit (str): The name of the subreddit to retrieve data from.
         
-        self.base_url = 'http://export.arxiv.org/api/query'
+        Returns:
+            RedditApi: The newly created RedditApi object.
+        """
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+            cls._instance.keyword = keyword
+            cls._instance.start = start
+            cls._instance.max_results = max_results
+            cls._instance.create_query_string(keyword=cls._instance.keyword,
+                                    start=cls._instance.start,
+                                    max_results=cls._instance.max_results)
 
+            cls._instance.url = None
+            cls._instance.data = None
+            
+            cls._instance.base_url = 'http://export.arxiv.org/api/query'
+        return cls._instance
+    
 
     def get_data(self) -> dict | None:
         """
@@ -35,58 +45,41 @@ class ArxivApi:
         Returns:
             dict | None: The parsed data from the API response, or None if the request failed.
         """
-        response = requests.get(url=self.base_url,
-                                params=self.query_params)
+        response = requests.get(url=self._instance.base_url,
+                                params=self._instance.query_params)
         if response.status_code == 200:
-            self.data = xmltodict.parse(response.content.decode())['feed']
-            if 'entry' in self.data:
-                return self.data['entry']
-        
-        return None
-        
-    def set_data(self, data: dict):
-        """
-        Sets the data to the given data.
-        
-        Parameters:
-            data (dict): The data to set.
-        """
-        self.data = data
-        return self.data
+            self._instance.data = xmltodict.parse(response.content.decode())['feed']
+            return self._instance.data['entry']
+        else:
+            return None
     
     def set_documents(self) -> list:
-            """
-            Sets the documents based on the retrieved data.
-            
-            Returns:
-                list: A list of Document objects.
-            """
-            collection = list()
-            if self.data is None:
-                self.get_data()
+        """
+        Sets the documents based on the retrieved data.
+        
+        Returns:
+            list: A list of Document objects.
+        """
+        collection = list()
+        if self._instance.data is None:
+            self.get_data()
 
-            # It returns collection empty caus Arxiv API not return entry all the times
-            if 'entry' not in self.data:
-                return collection
-            try:
-                entries = self.data['entry']
-                progress = 0
-                total = len(entries)
-                for document in entries:
-                    print_progress_bar(progress, total, 'Arxiv process')
-                    authors = [auth['name'] if isinstance(auth, dict) else auth for auth in document['author']]
-                    doc = Document(title=document['title'],
-                                    date=datetime.datetime.strptime(document['published'], 
-                                                                    "%Y-%m-%dT%H:%M:%SZ").date(),
-                                    author=authors,
-                                    url=document['id'],
-                                    text=str(document['summary']).replace('\n',' ')
-                    )
-                    collection.append(doc)
-                    progress += 1
-                return collection
-            except KeyError:
-                return collection
+        entries = self._instance.data['entry']
+        progress = 0
+        total = len(entries)
+        for document in entries:
+            print_progress_bar(progress, total, 'Arxiv process')
+            authors = [auth['name'] if isinstance(auth, dict) else auth for auth in document['author']]
+            doc = ArxivDocument(title=document['title'],
+                            date=datetime.datetime.strptime(document['published'], 
+                                                            "%Y-%m-%dT%H:%M:%SZ").date(),
+                            authors=authors,
+                            url=document['id'],
+                            text=str(document['summary']).replace('\n',' ')
+            )
+            collection.append(doc)
+            progress += 1
+        return collection
     
     def create_query_string(self, **kwargs):
         """
@@ -96,15 +89,15 @@ class ArxivApi:
             **kwargs: The keyword arguments to update the query parameters.
         """
         if 'keyword' in kwargs:
-            self.keyword = kwargs['keyword']
+            self._instance.keyword = kwargs['keyword']
         if 'start' in kwargs:
-            self.start = kwargs['start']
+            self._instance.start = kwargs['start']
         if 'max_results' in kwargs:
-            self.start = kwargs['max_results']
+            self._instance.start = kwargs['max_results']
             
         self.query_params = {
-            'search_query': f'all:{self.keyword}',
-            'start': self.start,
-            'max_results': self.max_results
+            'search_query': f'all:{self._instance.keyword}',
+            'start': self._instance.start,
+            'max_results': self._instance.max_results
             }
     
