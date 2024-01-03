@@ -2,12 +2,7 @@ class Document:
     """
     Class representing a document.
     """
-    def __init__(self,
-                 title: str,
-                 date: str,
-                 author: str,
-                 url: str,
-                 text: str) -> None:
+    def __init__(self, title: str, date: str, author: str, url: str, text: str) -> None:
         """
         Initialize a Document object.
         
@@ -44,18 +39,12 @@ class Document:
             author = self.author
         return f"{self.title}, by {author}"
 
-
+    
 class RedditDocument(Document):
     """
     Class representing a Reddit document.
     """
-    def __init__(self,
-                 title: str,
-                 date: str,
-                 author: str,
-                 url: str,
-                 text: str,
-                 num_comments: int) -> None:
+    def __init__(self, title: str, date: str, author: str, url: str, text: str, num_comments: int) -> None:
         """
         Initialize a RedditDocument object.
         
@@ -81,12 +70,7 @@ class ArxivDocument(Document):
     """
     Class representing an Arxiv document.
     """
-    def __init__(self,
-                 title: str,
-                 date: str,
-                 authors: list,
-                 url: str,
-                 text: str) -> None:
+    def __init__(self, title: str, date: str, authors: list, url: str, text: str) -> None:
         """
         Initialize an ArxivDocument object.
         
