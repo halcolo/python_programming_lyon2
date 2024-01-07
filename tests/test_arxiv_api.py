@@ -15,3 +15,6 @@ class TestArxivAPI(unittest.TestCase):
     def test_set_documents(self):
         documents = self.arxiv_obj.set_documents()
         assert documents is not None
+
+if __name__ == '__main__':
+    unittest.main()
