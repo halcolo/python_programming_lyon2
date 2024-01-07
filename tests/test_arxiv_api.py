@@ -4,7 +4,6 @@ from modules.arxiv_api import ArxivApi
 
 class TestArxivAPI(unittest.TestCase):
     def setUp(self):
-        print('GET ARXIV DATA')
         arxiv_kw = 'machine learning'
         self.arxiv_obj = ArxivApi(keyword=arxiv_kw, max_results='2')
         

@@ -1,7 +1,13 @@
 import sys
 import os
+import string
 import numpy as np
-import subprocess
+from nltk.corpus import stopwords
+from nltk.tokenize import RegexpTokenizer
+import string
+
+
+
 
 class RedditAuth:
     """
@@ -84,3 +90,44 @@ def print_progress_bar(index, total, label):
     sys.stdout.write('\r')
     sys.stdout.write(f"[{'=' * int(n_bar * progress):{n_bar}s}] {int(100 * progress)}%  {label}")
     sys.stdout.flush()
+
+
+
+def clean_text_util(text:str) -> list:
+    """
+    Cleans the given text by removing special characters, punctuation, and stopwords.
+
+    Args:
+        text (str): The text to be cleaned.
+
+    Returns:
+        list: The cleaned text as list.
+    """
+
+    stopwords_set = set(stopwords.words('english'))
+    
+    # Separing, removing all special characters and not used words in tokenized text
+    token = RegexpTokenizer(r'''\w'|\w+|[^\w\s]''')
+    tokens = token.tokenize(text)
+    tokens = list(token for token in tokens if token not in string.punctuation)
+    tokens = list(token for token in tokens if token not in stopwords_set)
+    tokens = list(token for token in tokens if len(token) > 2)
+    tokens = list(token.translate(str.maketrans('', '', string.punctuation)).lower() for token in tokens)
+    
+    return tokens
+
+
+def singleton(class_):
+    instance = None
+    def getinstance(*args, **kwargs):
+        nonlocal instance
+        if instance is None:
+            instance = class_(*args, **kwargs)
+        return instance
+    def deleteinstance():
+        nonlocal instance
+        if instance is not None:
+            del instance
+            instance = None
+    getinstance.delete = deleteinstance
+    return getinstance
