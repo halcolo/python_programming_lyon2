@@ -117,7 +117,26 @@ def clean_text_util(text:str) -> list:
     return tokens
 
 
-def singleton(class_):
+def singleton(class_) -> object:
+    """
+    Decorator function that converts a class into a singleton.
+
+    Args:
+        class_: The class to be converted into a singleton.
+
+    Returns:
+        The singleton instance of the class.
+
+    Example:
+        @singleton
+        class MyClass:
+            pass
+
+        obj1 = MyClass()
+        obj2 = MyClass()
+
+        assert obj1 is obj2
+    """
     instance = None
     def getinstance(*args, **kwargs):
         nonlocal instance

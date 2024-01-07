@@ -151,7 +151,7 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
         
 
         
-    return "No tab selected"
+    return "No Row selected"
 
 if __name__ == '__main__':
     app.run_server(debug=True)
