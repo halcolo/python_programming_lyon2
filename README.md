@@ -17,8 +17,6 @@ CLIENT_ID: This is the client ID for authentication.
 You have two ways to run project:
 - Run the main script `main.py` to start the project. This script is responsible for executing the web interface of the search engine, this will gives you  functionality and retrieving data using a table to select subject to search and a key word (*two inputs are required*).
 
-
-
 ![ScreenRecording2024-01-07at17 15 49online-video-cutter com-ezgif com-video-to-gif-converter(1)](https://github.com/jdalfons/search_engine/assets/25759070/fafd475b-5529-4494-af12-86f317ac5869)
 
 
