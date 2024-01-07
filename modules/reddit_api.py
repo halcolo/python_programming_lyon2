@@ -1,4 +1,5 @@
 import praw
+import logging
 import datetime
 from config import reddit_auth
 from modules.document import RedditDocument
@@ -46,18 +47,28 @@ class RedditApi:
         collection = list()
         if self.data is None:
             self.get_data()
+            
+        try:
 
-        # iterate through the data and create a RedditDocument object for each post
-        for document in self.data:
-            if type(document) is not None:
-                aut_name = document.author.name if document.author.name is not None else 'Anonymous'
-                doc = RedditDocument(
-                    title=document.title,
-                    date=datetime.datetime.fromtimestamp(int(document.created)),
-                    author=aut_name,
-                    url=document.url,
-                    text=str(document.selftext).replace('\n', ' '),
-                    num_comments=document.num_comments
-                )
-                collection.append(doc)
-        return collection
+            # iterate through the data and create a RedditDocument object for each post
+            if self.data is None:
+                raise TypeError('No data found. Call get_data() first check your credentials.')
+            for document in self.data:
+                if type(document) is not None:
+                    aut_name = document.author.name if document.author.name is not None else 'Anonymous'
+                    doc = RedditDocument(
+                        title=document.title,
+                        date=datetime.datetime.fromtimestamp(int(document.created)),
+                        author=aut_name,
+                        url=document.url,
+                        text=str(document.selftext).replace('\n', ' '),
+                        num_comments=document.num_comments
+                    )
+                    collection.append(doc)
+            return collection
+        except TypeError as e:
+            logging.error(e)
+            return None
+        except Exception as e:
+            logging.error(e)
+            return None

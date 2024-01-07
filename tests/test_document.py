@@ -68,3 +68,6 @@ class TestArxivDocument(unittest.TestCase):
             f"on Date: {self.date}, at URL: {self.url}, " \
             f"with Text: {self.text}"
         self.assertEqual(str(self.document), expected_output)
+        
+if __name__ == '__main__':
+    unittest.main()
