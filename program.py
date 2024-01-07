@@ -95,7 +95,6 @@ def search_engine(collection, keywords:list):
 
 def full_search_engine_proc(arxiv_kw:str, subreddit_kw:str) -> list:
     collection = list()
-    print("starting process")
     
     collection += setup_process(
         type='reddit', 

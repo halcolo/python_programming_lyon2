@@ -41,10 +41,13 @@ class RedditApi:
         Returns:
             list: A list of Document objects.
         """
+        
+        # if get_data() has not been called, call it to get data from subreddit
         collection = list()
         if self.data is None:
             self.get_data()
 
+        # iterate through the data and create a RedditDocument object for each post
         for document in self.data:
             if type(document) is not None:
                 aut_name = document.author.name if document.author.name is not None else 'Anonymous'

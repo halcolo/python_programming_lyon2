@@ -1,8 +1,7 @@
 import os
 import config
-import time
+import logging
 import pandas as pd
-from ipywidgets import widgets
 from modules.corpus import Corpus
 from utils.tools import clean_text_util
 from program import full_search_engine_proc, search_engine
@@ -13,7 +12,6 @@ from dash import (
     dash_table,  
     html)
 import gc
-gc.disable()
 
 path = os.path.dirname(os.path.abspath(__file__))
 
@@ -121,9 +119,7 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
         collection = full_search_engine_proc(
             arxiv_kw=arxiv_kw, 
             subreddit_kw=reddit_kw)
-        
-        print(collection[0])
-        
+                
         tokens_kw = clean_text_util(keyword_text)
     
         try:
@@ -158,4 +154,4 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
     return "No tab selected"
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run_server(debug=True)
