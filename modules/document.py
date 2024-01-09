@@ -1,3 +1,7 @@
+import datetime
+import requests
+import xmltodict
+
 class Document:
     """
     Class representing a document.
@@ -11,7 +15,7 @@ class Document:
         """
         Initialize a Document object.
         
-        Parameters:
+        Args::
             title (str): The title of the document.
             date (str): The date of the document.
             author (str): The author of the document.
@@ -62,7 +66,7 @@ class RedditDocument(Document):
         """
         Initialize a RedditDocument object.
         
-        Parameters:
+        Args::
             title (str): The title of the document.
             date (str): The date of the document.
             author (str): The author of the document.
@@ -78,7 +82,19 @@ class RedditDocument(Document):
         Return a string representation of the RedditDocument object.
         """
         return super().__str__() + f", with {self.num_comments} comments"
-
+    
+    
+    @classmethod
+    def from_praw(cls, praw_document):
+        aut_name = praw_document.author.name if praw_document.author.name is not None else 'Anonymous'
+        return cls(
+            title=praw_document.title,
+            date=datetime.datetime.fromtimestamp(int(praw_document.created)),
+            author=aut_name,
+            url=praw_document.url,
+            text=str(praw_document.selftext).replace('\n', ' '),
+            num_comments=praw_document.num_comments
+        )
 
 class ArxivDocument(Document):
     """
@@ -89,11 +105,11 @@ class ArxivDocument(Document):
                  date: str,
                  authors: list,
                  url: str,
-                 text: str) -> None:
+                 text: str,) -> None:
         """
         Initialize an ArxivDocument object.
         
-        Parameters:
+        Args::
             title (str): The title of the document.
             date (str): The date of the document.
             authors (list): The authors of the document.
