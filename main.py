@@ -4,9 +4,11 @@ import logging
 import pandas as pd
 from modules.corpus import Corpus
 from utils.tools import clean_text_util
-from program import full_search_engine_proc, search_engine
+from utils.program import search_documents, search_engine
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
 from dash import (
     Dash, 
     dash_table,  
@@ -114,33 +116,57 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
         
         # Getting values from table
         arxiv_kw = df.iloc[active_cell['row']]['Subject']
-        reddit_kw = df.iloc[active_cell['row']]['Subreddit']
-        
-        collection = full_search_engine_proc(
-            arxiv_kw=arxiv_kw, 
-            subreddit_kw=reddit_kw)
-                
-        tokens_kw = clean_text_util(keyword_text)
+        subreddit_kw = df.iloc[active_cell['row']]['Subreddit']
+    
     
         try:
-            corpus = Corpus()
-
-            max_articles = 10
-            for i in range(max_articles):
-                doc = collection[i]
-                corpus.add(author=doc.author , doc=doc)
-                    
-            vocab = corpus.stats()
-            vocab = vocab.sort_values('count', ascending=False)
-                        
-            result = search_engine(collection=collection,
-                        keywords=tokens_kw)
-            result_df = pd.DataFrame(result)
+            search_request_reddit = [{'type':'reddit', 'keyword':subreddit_kw}]
+            search_request_arxiv = [{'type':'arxiv', 'keyword':arxiv_kw}]
+            corpus_reddit = search_documents(search_request_reddit)
+            corpus_arxiv = search_documents(search_request_arxiv)
+            tokens_kw = clean_text_util(keyword_text)
             
-            table = dbc.Table.from_dataframe(result_df, striped=True, bordered=True, hover=True)
+            df_reddit = corpus_reddit.to_dataframe()
+            df_arxiv = corpus_arxiv.to_dataframe()
+            
+            df_corpus = pd.concat([df_reddit, df_arxiv])
+            
+            print(df_corpus.to_dict())
+            
+            response = search_engine(df_corpus.to_dict(), tokens_kw)
+            
+            # merged_df = pd.concat([df_reddit, df_arxiv])
+            # vectorizer = TfidfVectorizer(stop_words='english')
+            
+            # tditdf_matrix = vectorizer.fit_transform(merged_df['text'])
+            
+            # cosine_similarity_matrix = cosine_similarity(tditdf_matrix, tditdf_matrix)
 
-            return table
+            # similarity_df = pd.DataFrame(cosine_similarity_matrix, index=merged_df['id'], columns=merged_df['id'])
+            
+            # # Mostrar los términos más relacionados
+            # threshold = 0.5  # Puedes ajustar este umbral según tus necesidades
+            # related_terms = {}
 
+            # for idx in similarity_df.index:
+            #     print(idx)
+            #     related_texts = similarity_df[similarity_df[idx] > threshold].index.tolist()
+            #     related_texts.remove(idx)  # Excluir el propio texto
+            #     if related_texts:
+            #         related_terms[idx] = related_texts
+            # # print(related_terms)
+                    
+            # df_related_terms = pd.DataFrame.from_dict(df_reddit, orient='index')
+            # table_reddit = dbc.Table.from_dataframe(df_reddit, striped=True, bordered=True, hover=True)
+
+            # response = dbc.Row([
+            #     dbc.Row([
+            #         dbc.Col(html.Div([html.H1("Reddit"), table_reddit])),
+            #         dbc.Col(html.Div([html.H1("Arxiv"), table_reddit])),
+            #     ])
+            # ])
+            
+            return response
             
         except TypeError as t:
             logging.error(t)

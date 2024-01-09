@@ -2,11 +2,16 @@ import sys
 import os
 import string
 import numpy as np
-from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
-import string
+import nltk
 
 
+try:
+    from nltk.corpus import stopwords
+except ImportError:
+    nltk.download('stopwords')
+    from nltk.corpus import stopwords
+from nltk.corpus import stopwords
 
 
 class RedditAuth:
@@ -17,7 +22,7 @@ class RedditAuth:
         """
         Initialize a RedditAuth object.
         
-        Parameters:
+        Args::
             client_secret (str): The client secret.
             user_agent (str): The user agent.
             client_id (str): The client ID.
@@ -50,37 +55,11 @@ def set_vars():
     )
     return reddit_auth
 
-
-def show_metrics(full_corpus):
-    """
-    Prints various metrics about the given corpus.
-    
-    Parameters:
-        full_corpus (list): A list of documents in the corpus.
-    """
-    print('Data manipulation', '-'*20)
-    print('Corpus Length:', len(full_corpus))
-    
-    words = [len(doc.text.split(' ')) for doc in full_corpus]
-    phrases = [len(doc.text.split('.')) for doc in full_corpus]
-    
-    print('Number of words:', str(np.mean(words)))
-    print('Average phrases:', str(np.mean(phrases)))
-    print('Total words:', str(np.sum(words)))
-    
-    long_docs = [doc.text for doc in full_corpus if len(doc.text) > 20]
-    
-    print('Total long docs:', len(long_docs))
-    
-    full_string = ' '.join([doc.text for doc in full_corpus])
-    # print(full_string)
-
-
 def print_progress_bar(index, total, label):
     """
     Print a progress bar to the console.
     
-    Parameters:
+    Args::
         index (int): The current index.
         total (int): The total number of iterations.
         label (str): The label to display.
