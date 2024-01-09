@@ -7,6 +7,27 @@ from utils.tools import clean_text_util
 from scipy.sparse import csr_matrix
 from modules.factory import DocumentFactory
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+
+def calculate_similarity_articles(df):
+
+    try:
+        df['unique_id'] = df['source'] + '_' + df['id'].astype(str)
+
+        # Create and apply TF-IDF vectorizer to texts
+        vectorizer = TfidfVectorizer(stop_words='english')
+        tfidf_matrix = vectorizer.fit_transform(df['text'])
+
+        # cosine similarity for all texts in corpus
+        cosine_similarities = cosine_similarity(tfidf_matrix, tfidf_matrix)
+
+        similarity_df = pd.DataFrame(cosine_similarities, index=df['unique_id'], columns=df['unique_id'])
+        
+        return similarity_df
+    except Exception as e:
+        logging.error(e)
+        raise ValueError
 
 
 def search_documents(processes: list):
@@ -133,7 +154,8 @@ def words_it_idf(collection:list) -> dict:
 def search_engine(collection:list, keywords:list):
     """
     Search engine function that takes a collection of documents and a list of keywords,
-    and returns a sorted list of documents based on their similarity to the keywords.
+    and returns a sorted list of documents ids based on their similarity to the keywords 
+    and a score.
 
     Args::
         collection (list): A list of documents.
@@ -193,11 +215,15 @@ def search_engine(collection:list, keywords:list):
     # Store the document URL, similarity score, and document text in a dictionary
     for i in top_articles_indices:
         result = {
-            'Document URL': collection[i].url,
-            'Similarity Score': similarity_scores[0, i],
-            'Document Text': collection[i].text
+            'id': i,
+            'source': collection[i].source,
+            'score': similarity_scores[0, i],
         }
         results.append(result)
 
-    # Return sorted the results by similarity score in descending order
-    return sorted(results, key=lambda x: x['Similarity Score'], reverse=True)
+    # sort results and filter out results with 0 similarity score
+    sorted_scores = sorted(results, key=lambda x: x['score'], reverse=True)
+    filtered_results = list(filter(lambda x: x['score'] > 0, sorted_scores))
+    
+
+    return filtered_results

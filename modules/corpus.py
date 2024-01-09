@@ -4,10 +4,10 @@ from pprint import pformat
 from tabulate import tabulate
 from modules.author import Author
 from utils.tools import clean_text_util
-# from utils.tools import singleton
+from utils.tools import singleton
 
 
-# @singleton
+@singleton
 class Corpus:
     """
     Class representing a corpus of documents.
@@ -15,14 +15,10 @@ class Corpus:
 
     __concated_text = None
 
-    def __init__(self, name: str = 'Corpus 1'):
+    def __init__(self):
         """
         Initialize a Corpus object.
-
-        Args:
-            name (str): The name of the corpus.
         """
-        self.name = name
         # Author ID to Author mapping
         self.authors = dict()
         # Document ID to document mapping
@@ -152,18 +148,19 @@ class Corpus:
 
         return data
 
-    def get_all_docs(self) -> list:
+    def docs_to_collection(self) -> list:
         """
-        Get all documents in the corpus.
+        Get all documents in the corpus in a list.
+        Used as collection of all documents objects in the corpus.
 
         Returns:
             list: A list of documents.
         """
         return list(self.documents.values())
     
-    def all_docs(self):
+    def get_corpus_contents(self):
         """
-        Get all documents in the corpus.
+        Get dictionary with just documents texts.
 
         Returns:
             list: A list of documents.
@@ -194,5 +191,12 @@ class Corpus:
         """
         data = list()
         for doc_id, doc in self.documents.items():
-            data.append({'id': doc_id, 'title': doc.title, 'text': doc.text, 'author': doc.author, 'date': doc.date})
+            data.append({
+                'id': doc_id, 
+                'title': doc.title, 
+                'text': doc.text, 
+                'author': doc.author, 
+                'date': doc.date,
+                'source': doc.source,
+                })
         return pd.DataFrame(data)

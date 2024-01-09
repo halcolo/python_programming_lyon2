@@ -134,6 +134,7 @@ class ArxivApi:
                 date=datetime.datetime.strptime(document['published'], "%Y-%m-%dT%H:%M:%SZ").date(),
                 authors=[auth['name'] if isinstance(auth, dict) else auth for auth in document['author']],
                 url=document['id'],
+                source='arxiv'.lower(),
                 text=str(document['summary']).replace('\n',' ')
             )
             for document in entries
