@@ -25,7 +25,10 @@ PAGE_ZISE = 15
 TABLE_DICT_ROW_NAME = 'row'
 last_active_cell = None
 external_css = [f"{path}/css/custom_table_styling.css"]
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[
+    dbc.themes.BOOTSTRAP, 
+    # dbc.icons.FONT_AWESOME, 
+    dbc.icons.BOOTSTRAP])
 
 
 content = list()
@@ -163,46 +166,37 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
                         # df_corpus_filtered.loc[df_corpus_filtered['similar_source'] == idx.split('_')[0], 'similar_source'] = df_corpus_filtered.loc[df_corpus_filtered['similar_source'] == idx.split('_')[0], 'similar_source'].apply(lambda x: x.append(dict()))
                         similarity_pairs[idx.split('_')[0]][idx.split('_')[1]].append({'similar_source': i.split('_')[0], 'similar_id': i.split('_')[1], 'similarity': selected_df_filtered[selected_df_filtered['unique_id'] == i][idx].values[0]})
             
-            similarity_df_reddit = None
-            similarity_df_arxiv = None
             
             for source in similarity_pairs:
                 for id in similarity_pairs[source]:
                     if source == 'reddit':
+                        
                         similarity_df_reddit = pd.DataFrame(similarity_pairs[source][id])
-                    else:
+                    elif source == 'arxiv':
                         similarity_df_arxiv = pd.DataFrame(similarity_pairs[source][id])
-
+            
+            accordion_content = list()
+            
+            for document in df_corpus_filtered.to_dict('records'):
+                
+                accordion_content += dbc.AccordionItem(
+                    html.Div([html.H1(document['title']), html.P(document['text']), html.Div([html.H1("Similarity")]), html.Div([html.H1("Reddit")]), dbc.Table.from_dataframe(similarity_df_reddit[similarity_df_reddit['similar_id'] == document['id']]), html.Div([html.H1("Arxiv")]), dbc.Table.from_dataframe(similarity_df_arxiv[similarity_df_arxiv['similar_id'] == document['id']])
+                    ]),
+                    str(document), 
+                    title=f"{document['source']}_{document['title']}",
+                ),
             
             table_scores = dbc.Table.from_dataframe(df_corpus_filtered, striped=True, bordered=True, hover=True, id='tbl_scores')
-            # table_scores = dash_table.DataTable(
-            #     data=df_corpus.to_dict('records'),
-            #     columns=[{'id': str(c), 'name': str(c)} for c in df_corpus.columns],
-            #     style_cell={'textAlign': 'left'},
-            #     # Options de pagination
-            #     page_current=0,
-            #     page_size=PAGE_ZISE,
-            #     style_cell_conditional=[
-            #         {
-            #             'if': {'column_id': 'name'},
-            #             'textAlign': 'left'
-            #         },
-            #     ], id='tbl_scores'
-            #     # striped=True, bordered=True, hover=True, id='tbl_scores',
-            # )
-            # dbc.Table.from_dataframe(df_corpus, striped=True, bordered=True, hover=True, id='tbl_scores')
-            
+
             response = dbc.Row([
                 dbc.Row([
-                    html.Div([table_scores])
-                    
-                    # dbc.Spinner(
-                    #     id="tab-similarity",
-                    #     children=[html.Div([html.Div(id="loading-output-similarity")])],
-                    #     color="primary",
-                    # ),
-                    # dbc.Col(html.Div([html.H1("Arxiv"), html.Div(id='tbl_arxiv')]))
-                    # dbc.Col(html.Div([html.H1("Arxiv"), table_reddit])),
+                    html.Div(
+                        dbc.Accordion(
+                            accordion_content,
+                            flush=True,
+                        ),
+                    )
+
                 ])
             ])
             
@@ -218,8 +212,12 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
 
         
     return  dbc.Alert(
-                "Please select a row and enter a key word", 
-                color="danger"
+                [
+                    html.I(className="bi bi-info-circle-fill me-2"),
+                    "Please select a row and enter a key word",
+                ],
+                color="info",
+                className="d-flex align-items-center",
             )
 
 # @app.callback(
@@ -239,7 +237,35 @@ if __name__ == '__main__':
     
     
     
-            
+                                # table_scores = dash_table.DataTable(
+                    #     data=df_corpus.to_dict('records'),
+                    #     columns=[{'id': str(c), 'name': str(c)} for c in df_corpus.columns],
+                    #     style_cell={'textAlign': 'left'},
+                    #     # Options de pagination
+                    #     page_current=0,
+                    #     page_size=PAGE_ZISE,
+                    #     style_cell_conditional=[
+                    #         {
+                    #             'if': {'column_id': 'name'},
+                    #             'textAlign': 'left'
+                    #         },
+                    #     ], id='tbl_scores'
+                    #     # striped=True, bordered=True, hover=True, id='tbl_scores',
+                    # )
+                    # dbc.Table.from_dataframe(df_corpus, striped=True, bordered=True, hover=True, id='tbl_scores')
+                    
+                    # html.Div([table_scores])
+                    
+                    # dbc.Spinner(
+                    #     id="tab-similarity",
+                    #     children=[html.Div([html.Div(id="loading-output-similarity")])],
+                    #     color="primary",
+                    # ),
+                    # dbc.Col(html.Div([html.H1("Arxiv"), html.Div(id='tbl_arxiv')]))
+                    # dbc.Col(html.Div([html.H1("Arxiv"), table_reddit])),
+                    
+                    
+                    
             # merged_df = pd.concat([df_reddit, df_arxiv])
             # vectorizer = TfidfVectorizer(stop_words='english')
             
