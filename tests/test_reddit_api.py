@@ -3,7 +3,7 @@ import json
 import config
 import datetime
 import time
-from modules.reddit_api import RedditApi
+from modules.api import RedditApi
 from modules.document import RedditDocument
 
 class TestRedditAPI(unittest.TestCase):
