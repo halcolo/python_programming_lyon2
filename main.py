@@ -79,6 +79,7 @@ form = dbc.Form([
         dbc.Col(html.Div(data_table)),
         dbc.Col(html.Div([keyword_input, button])),
         dbc.Col(dcc.Graph(id="word-evo-graph"), md=6),
+        
     ]),
     dbc.Row([
         dbc.Col(
@@ -95,6 +96,7 @@ app.layout = dbc.Container(form, fluid=True)
 
 @app.callback(
     Output('tab-response', 'children'),
+    Output('word-evo-graph', 'figure'),
     [Input("add-btn", "n_clicks"), State("keyword-text", "value"), State("tbl", "active_cell")]
 )
 def render_tab_content(n_clicks, keyword_text, active_cell):
@@ -187,7 +189,23 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
                     ])
                 ])
 
-                return response
+                fig = go.Figure()
+                word_freq_per_year = calculate_word_freq_per_year(corpus, tokens_kw)
+                count = 0
+                for word in tokens_kw:
+                    if count < 2:
+                        word_freqs = {key[1]: value for key, value in word_freq_per_year.items() if key[0] == word}
+                        years, frequency = zip(*sorted(word_freqs.items()))
+                        
+                        fig.add_trace(go.Scatter(x=years, y=frequency, mode='lines+markers', name=word))
+                        
+                fig.update_layout(
+                    title='Evolution of Word Usage Over Time',
+                    xaxis_title='Year',
+                    yaxis_title='Word Count',
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                )
+                return response, fig
             else:
                 return dbc.Alert(
                     [
@@ -209,62 +227,41 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
         ],
         color="info",
         className="d-flex align-items-center",
-    )
+    ), go.Figure()
 
 
-@app.callback(
-    Output('word-evo-graph', 'figure'),
-    [Input("add-btn", "n_clicks"), State("keyword-text", "value") , State("tbl", "active_cell")]
-)
-def cb_words_evolution_graph(n_clicks, keyword_text, active_cell):
-    if active_cell and keyword_text is not None:
-        arxiv_kw = df.iloc[active_cell['row']]['Subject']
-        subreddit_kw = df.iloc[active_cell['row']]['Subreddit']
+# @app.callback(
+#     Output('word-evo-graph', 'figure'),
+#     [Input("add-btn", "n_clicks"), State("keyword-text", "value") , State("tbl", "active_cell")]
+# )
+# def cb_words_evolution_graph(n_clicks, keyword_text, active_cell):
+#     if active_cell and keyword_text is not None:
+#         arxiv_kw = df.iloc[active_cell['row']]['Subject']
+#         subreddit_kw = df.iloc[active_cell['row']]['Subreddit']
         
-        # time.sleep(4)
-        fig = go.Figure()
-        data = list()
-        search_request = [
-            {'type': 'reddit', 'keyword': subreddit_kw, 'topic': subreddit_kw, 'quantity': 100},
-            {'type': 'arxiv', 'keyword': arxiv_kw, 'topic': subreddit_kw, 'quantity': 100}
-        ]
-        corpus = search_documents(search_request)
-        word_freq_per_year = calculate_word_freq_per_year(corpus, keyword_text)
-        count = 0
-        for word in keyword_text:
-            if count < 2:
-                word_freqs = {key[1]: value for key, value in word_freq_per_year.items() if key[0] == word}
-                years, frequency = zip(*sorted(word_freqs.items()))
+#         # time.sleep(4)
+#         fig = go.Figure()
+#         search_request = [
+#             {'type': 'reddit', 'keyword': subreddit_kw, 'topic': subreddit_kw, 'quantity': 100},
+#             {'type': 'arxiv', 'keyword': arxiv_kw, 'topic': subreddit_kw, 'quantity': 100}
+#         ]
+#         corpus = search_documents(search_request)
+#         word_freq_per_year = calculate_word_freq_per_year(corpus, keyword_text)
+#         count = 0
+#         for word in keyword_text:
+#             if count < 2:
+#                 word_freqs = {key[1]: value for key, value in word_freq_per_year.items() if key[0] == word}
+#                 years, frequency = zip(*sorted(word_freqs.items()))
                 
-                fig.add_trace(go.Scatter(x=years, y=frequency, mode='lines+markers', name=word))
-
-                data.append([
-                    go.Scatter(x=years, y=frequency, mode='lines+markers', name=word)
-                ])
+#                 fig.add_trace(go.Scatter(x=years, y=frequency, mode='lines+markers', name=word))
                 
-        fig.update_layout(
-            title='Evolution of Word Usage Over Time',
-            xaxis_title='Year',
-            yaxis_title='Word Count',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        )
-
-        layout = {
-            # legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            "title": {"Evolution of Word Usage Over Time"},
-            "xaxis": {"title": "year"}, 
-            "yaxis": {"title": "Word Count"},
-            }
-
-        fig.update_layout(
-            title='Evolution of Word Usage Over Time',
-            xaxis_title='Year',
-            yaxis_title='Word Count',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        )
-        
-        return fig
-        # return go.Figure(data=data, layout=layout)
+#         fig.update_layout(
+#             title='Evolution of Word Usage Over Time',
+#             xaxis_title='Year',
+#             yaxis_title='Word Count',
+#             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+#         )
+#         return fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)

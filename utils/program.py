@@ -67,7 +67,7 @@ def search_documents(processes: list):
     if os.path.exists(pkl_file_path):
         with open(pkl_file_path, 'rb') as file:
             corpus = pickle.load(file)
-        logging.warn(f'Corpus loaded from {pkl_file_path}')
+        # logging.warn(f'Corpus loaded from {pkl_file_path}')
     else:
         try:
             for process in processes:
@@ -245,15 +245,15 @@ def search_engine(collection:list, keywords:list):
 
 def calculate_word_freq_per_year(corpus, words_to_track):
     word_freq_per_year = defaultdict(lambda: defaultdict(int))
-    
     for doc in list(corpus.documents.values()):
         try:
             date = doc.date
             year = date.year
         except ValueError:
             continue
+        text = doc.text.lower() + ' ' + doc.title.lower()
         for word in words_to_track:
-            word_freq = doc.text.lower().count(word.lower())
+            word_freq = text.count(word.lower())
             key = (word, str(year))
             word_freq_per_year[key] = word_freq
     
