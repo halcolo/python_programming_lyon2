@@ -97,72 +97,81 @@ def clean_paragraph_util(text:str) -> list:
     return tokens
 
 
-def singleton(class_) -> object:
+def clean_text(text):
     """
-    Decorator function that converts a class into a singleton.
+    Clean the given text by removing square brackets and their contents,
+    removing non-alphanumeric characters except for important symbols and spaces,
+    and removing extra spaces.
 
     Args:
-        class_: The class to be converted into a singleton.
+        text (str): The text to be cleaned.
 
     Returns:
-        The singleton instance of the class.
-
-    Example:
-        @singleton
-        class MyClass:
-            pass
-
-        obj1 = MyClass()
-        obj2 = MyClass()
-
-        assert obj1 is obj2
+        str: The cleaned text.
     """
-    instance = None
-    def getinstance(*args, **kwargs):
-        nonlocal instance
-        if instance is None:
-            instance = class_(*args, **kwargs)
-        return instance
-    def deleteinstance():
-        nonlocal instance
-        if instance is not None:
-            del instance
-            instance = None
-    getinstance.delete = deleteinstance
-    return getinstance
-
-# def singleton(cls):
-#     instances = {}
-
-#     def get_instance(*args, **kwargs):
-#         if cls not in instances:
-#             instances[cls] = cls(*args, **kwargs)
-#         return instances[cls]
-
-#     return get_instance
-
-def clean_text(text):
-    # Remove square brackets and their contents
     text = re.sub(r'\[.*?\]', '', text)
-    # Remove non-alphanumeric characters except for important symbols and spaces
     text = re.sub(r"[^a-zA-Z0-9',?:!\s]", '', text)
     text = ' '.join(text.split())
     
     return text
 
 def normalize_value(value, min_value, max_value):
+    """
+    Normalize a value between 0 and 1 based on the given minimum and maximum values.
+
+    Args:
+        value (float): The value to be normalized.
+        min_value (float): The minimum value of the range.
+        max_value (float): The maximum value of the range.
+
+    Returns:
+        float: The normalized value between 0 and 1.
+    """
     if min_value == max_value:
         return 0.5  
     return (value - min_value) / (max_value - min_value)
 
 def label_from_normalized_value(normalized_value):
-    if normalized_value < 0.2:
-        return "Very Low"
-    elif 0.2 <= normalized_value < 0.4:
-        return "Low"
-    elif 0.4 <= normalized_value < 0.6:
-        return "Moderate"
-    elif 0.6 <= normalized_value < 0.8:
-        return "High"
+    """
+    Assigns a label based on the given normalized value.
+    
+    0 - 0.3: Low similarity
+    0.3 - 0.6: Medium similarity
+    0.6 - 0.8: High similarity
+    0.8 - 1: Very high similarity
+
+    Args:
+        normalized_value (float): The normalized value to assign a label to.
+
+    Returns:
+        int: The label assigned to the normalized value.
+    """
+    if normalized_value < 0.3:
+        return 0
+    elif 0.4 <= normalized_value < 0.7:
+        return 1
     else:
-        return "Very High"
+        return 2
+    
+class SingletonMeta(type):
+    """
+    Metaclass for implementing the Singleton design pattern.
+
+    This metaclass ensures that only one instance of a class is created and
+    provides a global point of access to that instance.
+
+    Usage:
+    class MyClass(metaclass=SingletonMeta):
+        # class definition
+
+    Note:
+    This metaclass should be used as the metaclass of the class that needs to
+    be a singleton.
+    """
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]

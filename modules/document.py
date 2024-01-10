@@ -90,16 +90,20 @@ class RedditDocument(Document):
     
     @classmethod
     def from_praw(cls, praw_document):
-        aut_name = praw_document.author.name if praw_document.author.name is not None else 'Anonymous'
-        return cls(
-            title=praw_document.title,
-            date=datetime.datetime.fromtimestamp(int(praw_document.created)),
-            author=aut_name,
-            url=praw_document.url,
-            text=str(praw_document.selftext).replace('\n', ' '),
-            source='reddit'.lower(), # Source in lowr case
-            num_comments=praw_document.num_comments
-        )
+        if praw_document.author is not None:
+            if praw_document.author is not None:
+                aut_name = praw_document.author.name if praw_document.author.name is not None else 'Anonymous'
+            else:
+                aut_name = 'Anonymous'
+            return cls(
+                title=praw_document.title,
+                date=datetime.datetime.fromtimestamp(int(praw_document.created)),
+                author=aut_name,
+                url=praw_document.url,
+                text=str(praw_document.selftext).replace('\n', ' '),
+                source='reddit'.lower(), # Source in lowr case
+                num_comments=praw_document.num_comments
+            )
 
 class ArxivDocument(Document):
     """

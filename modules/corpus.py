@@ -3,18 +3,9 @@ import pandas as pd
 from pprint import pformat
 from tabulate import tabulate
 from modules.author import Author
-from utils.tools import clean_paragraph_util
 import pickle
-from utils.tools import singleton
-
-
-class SingletonMeta(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]
+from collections import defaultdict
+from utils.tools import clean_paragraph_util, SingletonMeta
 
 
 class Corpus(metaclass=SingletonMeta):
@@ -28,16 +19,12 @@ class Corpus(metaclass=SingletonMeta):
         """
         Initialize a Corpus object.
         """
-        # Author ID to Author mapping
+        # Mapping Variables
         self.authors = dict()
-        # Document ID to document mapping
         self.documents = dict()
-        # Author to ID mapping
-        self.author_to_id = dict()
-        # Number of documents
-        self.document_count = 0
-        # Number of authors
-        self.author_count = 0
+        self.__author_to_id = dict()
+        self.__document_count = 0
+        self.__author_count = 0
 
     def __repr__(self):
         """
@@ -67,14 +54,14 @@ class Corpus(metaclass=SingletonMeta):
             doc: The document to add.
             author: The author of the document.
         """
-        if author not in self.author_to_id:  # Setting up author unique ID
-            self.author_count += 1
-            self.authors[self.author_count] = Author(author)
-            self.author_to_id[author] = self.author_count
-        self.authors[self.author_to_id[author]].add(doc.text)
+        if author not in self.__author_to_id:  # Setting up author unique ID
+            self.__author_count += 1
+            self.authors[self.__author_count] = Author(author)
+            self.__author_to_id[author] = self.__author_count
+        self.authors[self.__author_to_id[author]].add(doc.text)
 
-        self.document_count += 1
-        self.documents[self.document_count] = doc
+        self.__document_count += 1
+        self.documents[self.__document_count] = doc
 
     def __concat_data(self) -> None:
         """
@@ -222,3 +209,33 @@ class Corpus(metaclass=SingletonMeta):
         """
         with open(path, 'rb') as file:
             self.documents = pickle.load(file)
+            
+    
+    def calculate_word_freq_per_year(self, words_to_track:list) -> defaultdict:
+            """
+            Calculates the word frequency per year for the given list of words.
+
+            Args:
+                words_to_track (list): A list of words to track the frequency of.
+
+            Returns:
+                defaultdict: A nested defaultdict containing the word frequency per year.
+            """
+            word_freq_per_year = defaultdict(lambda: defaultdict(int))
+
+            for doc in self.documents.values():
+                try:
+                    date = doc.date
+                    year = date.year
+                except (ValueError, AttributeError):
+                    continue
+
+                text = (doc.text + ' ' + doc.title).lower()
+                for word in words_to_track:
+                    word_freq = text.split().count(word.lower())
+                    key = (word.lower(), str(year))
+                    if key in word_freq_per_year.keys():
+                        word_freq += word_freq_per_year[key]
+                    word_freq_per_year[key] = word_freq
+
+            return word_freq_per_year
