@@ -3,12 +3,21 @@ import pandas as pd
 from pprint import pformat
 from tabulate import tabulate
 from modules.author import Author
-from utils.tools import clean_text_util
+from utils.tools import clean_paragraph_util
+import pickle
 from utils.tools import singleton
 
 
-@singleton
-class Corpus:
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class Corpus(metaclass=SingletonMeta):
     """
     Class representing a corpus of documents.
     """
@@ -38,17 +47,17 @@ class Corpus:
         return pformat(self.get_stats(), indent=4, width=1)
 
     def __str__(self):
-            """
-            Returns a string representation of the Corpus object.
-            
-            The string representation includes the statistics of the Corpus object
-            in a tabulated format.
-            
-            Returns:
-                str: A string representation of the Corpus object.
-            """
-            stats = self.get_stats()
-            return tabulate(list(stats.items()))
+        """
+        Returns a string representation of the Corpus object.
+
+        The string representation includes the statistics of the Corpus object
+        in a tabulated format.
+
+        Returns:
+            str: A string representation of the Corpus object.
+        """
+        stats = self.get_stats()
+        return tabulate(list(stats.items()))
 
     def add(self, doc, author):
         """
@@ -58,7 +67,7 @@ class Corpus:
             doc: The document to add.
             author: The author of the document.
         """
-        if author not in self.author_to_id: # Setting up author unique ID
+        if author not in self.author_to_id:  # Setting up author unique ID
             self.author_count += 1
             self.authors[self.author_count] = Author(author)
             self.author_to_id[author] = self.author_count
@@ -66,7 +75,6 @@ class Corpus:
 
         self.document_count += 1
         self.documents[self.document_count] = doc
-
 
     def __concat_data(self) -> None:
         """
@@ -95,7 +103,7 @@ class Corpus:
 
         return matches
 
-    def __clean_text(self, doc:str = None) -> None:
+    def __clean_text(self, doc: str = None) -> None:
         """
         Clean the text of a document.
 
@@ -113,7 +121,7 @@ class Corpus:
         else:
             cleaned_doc = doc
 
-        words = clean_text_util(cleaned_doc)
+        words = clean_paragraph_util(cleaned_doc)
         cleaned_doc = ' '.join(words)
 
         return cleaned_doc
@@ -157,7 +165,7 @@ class Corpus:
             list: A list of documents.
         """
         return list(self.documents.values())
-    
+
     def get_corpus_contents(self):
         """
         Get dictionary with just documents texts.
@@ -169,7 +177,7 @@ class Corpus:
         for id, doc in self.documents.items():
             documents[id] = doc.text
         return documents
-    
+
     def get_document(self, doc_id: int) -> str:
         """
         Get a document from the corpus.
@@ -180,8 +188,11 @@ class Corpus:
         Returns:
             str: The document.
         """
-        return self.documents[doc_id]  
-    
+        if isinstance(int(doc_id), int):
+            return self.documents[int(doc_id)]
+        else:
+            raise TypeError("Document ID must be an integer.")
+
     def to_dataframe(self) -> pd.DataFrame:
         """
         Convert the corpus to a DataFrame.
@@ -192,11 +203,22 @@ class Corpus:
         data = list()
         for doc_id, doc in self.documents.items():
             data.append({
-                'id': doc_id, 
-                'title': doc.title, 
-                'text': doc.text, 
-                'author': doc.author, 
+                'id': doc_id,
+                'title': doc.title,
+                'text': doc.text,
+                'author': doc.author,
                 'date': doc.date,
                 'source': doc.source,
-                })
+                'url': doc.url
+            })
         return pd.DataFrame(data)
+
+    def from_pkl_file(self, path: str) -> None:
+        """
+        Load the corpus from a pickle file.
+
+        Args:
+            path (str): The path to the pickle file.
+        """
+        with open(path, 'rb') as file:
+            self.documents = pickle.load(file)

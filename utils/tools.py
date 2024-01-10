@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import string
 import numpy as np
 from nltk.tokenize import RegexpTokenizer
@@ -72,7 +73,7 @@ def print_progress_bar(index, total, label):
 
 
 
-def clean_text_util(text:str) -> list:
+def clean_paragraph_util(text:str) -> list:
     """
     Cleans the given text by removing special characters, punctuation, and stopwords.
 
@@ -129,3 +130,22 @@ def singleton(class_) -> object:
             instance = None
     getinstance.delete = deleteinstance
     return getinstance
+
+# def singleton(cls):
+#     instances = {}
+
+#     def get_instance(*args, **kwargs):
+#         if cls not in instances:
+#             instances[cls] = cls(*args, **kwargs)
+#         return instances[cls]
+
+#     return get_instance
+
+def clean_text(text):
+    # Remove square brackets and their contents
+    text = re.sub(r'\[.*?\]', '', text)
+    # Remove non-alphanumeric characters except for important symbols and spaces
+    text = re.sub(r"[^a-zA-Z0-9',?:!\s]", '', text)
+    text = ' '.join(text.split())
+    
+    return text

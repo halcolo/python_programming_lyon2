@@ -112,7 +112,10 @@ class ArxivApi:
             response = self.session.get(url=self.base_url, params=self.query_params)
             if response.status_code == 200:
                 self.data = xmltodict.parse(response.content.decode())['feed']
-                return self.data['entry']
+                if 'entry' not in self.data:
+                    raise ValueError('No data founded from ARXIV API')
+                else:
+                    return self.data['entry']
         except requests.RequestException:
             pass
         return None

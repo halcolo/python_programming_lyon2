@@ -45,7 +45,7 @@ class DocumentFactory:
 
         if self.type_process.lower() == 'reddit':
             return type_to_class[self.type_process.lower()](
-                self.data['keyword'])
+                self.data['keyword'], max_results=self.data['max_results'])
         if self.type_process.lower() == 'arxiv':
             return type_to_class[self.type_process.lower()](
                 keyword=self.data['keyword'],

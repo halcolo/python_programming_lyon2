@@ -2,18 +2,18 @@ import os
 import config
 import logging
 import pandas as pd
-from modules.corpus import Corpus
-from utils.tools import clean_text_util
+from utils.tools import clean_paragraph_util, clean_text
 from utils.program import search_documents, search_engine, calculate_similarity_articles
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
+# import gc
+# from modules.corpus import Corpus
+# from sklearn.metrics.pairwise import cosine_similarity
+# from sklearn.feature_extraction.text import TfidfVectorizer
 from dash import (
     Dash, 
     dash_table,  
     html)
-import gc
 
 path = os.path.dirname(os.path.abspath(__file__))
 
@@ -27,7 +27,6 @@ last_active_cell = None
 external_css = [f"{path}/css/custom_table_styling.css"]
 app = Dash(__name__, external_stylesheets=[
     dbc.themes.BOOTSTRAP, 
-    # dbc.icons.FONT_AWESOME, 
     dbc.icons.BOOTSTRAP])
 
 
@@ -46,11 +45,13 @@ if os.environ.get('CLIENT_SECRET') is None \
 
 
 # Add table
+
 data_table = dash_table.DataTable(
         data=df.to_dict('records'),
-        columns=[{'id': str(c), 'name': str(c)} for c in df.columns],
+        # columns=[{'id': str(c), 'name': str(c)} for c in df.columns],
+        columns=[{'id': 'Subject', 'name': 'Subject'}],
         style_cell={'textAlign': 'left'},
-        # Options de pagination
+        # Options de pagination.to_dict
         page_current=0,
         page_size=PAGE_ZISE,
         style_cell_conditional=[
@@ -128,13 +129,20 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
     
         try:
             search_request = [
-                {'type':'reddit', 'keyword':subreddit_kw},
-                {'type':'arxiv', 'keyword':arxiv_kw}
+                {'type':'reddit', 
+                 'keyword':subreddit_kw, 
+                 'topic': subreddit_kw,
+                 'quantity': 100,
+                 },
+                {'type':'arxiv',
+                 'keyword':arxiv_kw,
+                 'topic': subreddit_kw,
+                 'quantity': 100,}
                 ]
             
             corpus = search_documents(search_request)
             # corpus_arxiv = search_documents(search_request_arxiv)
-            tokens_kw = clean_text_util(keyword_text)
+            tokens_kw = clean_paragraph_util(keyword_text)
             df_corpus = corpus.to_dataframe()
             
             # Return a list with the documents that match the keywords filtered 
@@ -142,65 +150,113 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
             
             # response_search_engine = sorted(response_search_engine, key=lambda x: x['Score'], reverse=True)
             df_scores = pd.DataFrame(response_search_engine)
-            
-            df_scores['id'] = df_scores['id'].astype(str)
-            df_corpus['id'] = df_corpus['id'].astype(str)
-            df_corpus['unique_id'] = df_corpus['source'] + '_' + df_corpus['id'].astype(str)
-            
-            df_corpus_filtered = df_corpus[df_corpus['id'].isin(df_scores['id'])]
-            similarity_df = calculate_similarity_articles(df_corpus)
-            
-            
-            similarity_pairs = dict()
-            for idx in df_corpus['unique_id'].tolist():
-                similarity_pairs[idx.split('_')[0]] = dict()
-                similarity_pairs[idx.split('_')[0]][idx.split('_')[1]] = list()
-                selected_rows = similarity_df.loc[df_corpus['unique_id'], idx]
-                selected_df = selected_rows.reset_index()
-                selected_df_sorted = selected_df.sort_values(by=idx, ascending=False)
-                selected_df_sorted = selected_df_sorted.drop(selected_df_sorted[selected_df_sorted['unique_id'] == idx].index)
-                selected_df_sorted = selected_df_sorted.drop(selected_df_sorted[selected_df_sorted[idx] <= float(0.0)].index)
-                if len(selected_df_sorted) > 0:
-                    selected_df_filtered = selected_df_sorted.tail(5)
-                    for i in selected_df_filtered['unique_id'].tolist():
-                        # df_corpus_filtered.loc[df_corpus_filtered['similar_source'] == idx.split('_')[0], 'similar_source'] = df_corpus_filtered.loc[df_corpus_filtered['similar_source'] == idx.split('_')[0], 'similar_source'].apply(lambda x: x.append(dict()))
-                        similarity_pairs[idx.split('_')[0]][idx.split('_')[1]].append({'similar_source': i.split('_')[0], 'similar_id': i.split('_')[1], 'similarity': selected_df_filtered[selected_df_filtered['unique_id'] == i][idx].values[0]})
-            
-            
-            for source in similarity_pairs:
-                for id in similarity_pairs[source]:
-                    if source == 'reddit':
-                        
-                        similarity_df_reddit = pd.DataFrame(similarity_pairs[source][id])
-                    elif source == 'arxiv':
-                        similarity_df_arxiv = pd.DataFrame(similarity_pairs[source][id])
-            
-            accordion_content = list()
-            
-            for document in df_corpus_filtered.to_dict('records'):
+            if len(df_scores) > 0:
+                df_scores['id'] = df_scores['id'].astype(str)
+                df_corpus['id'] = df_corpus['id'].astype(str)
+                df_corpus['unique_id'] = df_corpus['source'] + '_' + df_corpus['id'].astype(str)
                 
-                accordion_content += dbc.AccordionItem(
-                    html.Div([html.H1(document['title']), html.P(document['text']), html.Div([html.H1("Similarity")]), html.Div([html.H1("Reddit")]), dbc.Table.from_dataframe(similarity_df_reddit[similarity_df_reddit['similar_id'] == document['id']]), html.Div([html.H1("Arxiv")]), dbc.Table.from_dataframe(similarity_df_arxiv[similarity_df_arxiv['similar_id'] == document['id']])
-                    ]),
-                    str(document), 
-                    title=f"{document['source']}_{document['title']}",
-                ),
-            
-            table_scores = dbc.Table.from_dataframe(df_corpus_filtered, striped=True, bordered=True, hover=True, id='tbl_scores')
+                df_corpus_filtered = df_corpus[df_corpus['id'].isin(df_scores['id'])]
+                similarity_df = calculate_similarity_articles(df_corpus)
+                
+                
+                similarity_pairs = dict((('reddit', dict()),('arxiv', dict())))
+                for idx in df_corpus['unique_id'].tolist():
+                    # similarity_pairs[idx.split('_')[0]] = dict()
+                    similarity_pairs[idx.split('_')[0]][idx.split('_')[1]] = list()
+                    selected_rows = similarity_df.loc[df_corpus['unique_id'], idx]
+                    selected_df = selected_rows.reset_index()
+                    selected_df_sorted = selected_df.sort_values(by=idx, ascending=False)
+                    selected_df_sorted = selected_df_sorted.drop(selected_df_sorted[selected_df_sorted['unique_id'] == idx].index)
+                    selected_df_sorted = selected_df_sorted.drop(selected_df_sorted[selected_df_sorted[idx] <= float(0.0)].index)
+                    if len(selected_df_sorted) > 0:
+                        selected_df_filtered = selected_df_sorted.tail(3)
+                        for i in selected_df_filtered['unique_id'].tolist():
+                            # df_corpus_filtered.loc[df_corpus_filtered['similar_source'] == idx.split('_')[0], 'similar_source'] = df_corpus_filtered.loc[df_corpus_filtered['similar_source'] == idx.split('_')[0], 'similar_source'].apply(lambda x: x.append(dict()))
+                            similarity_pairs[idx.split('_')[0]][idx.split('_')[1]].append({'similar_source': i.split('_')[0], 'similar_id': i.split('_')[1], 'similarity': selected_df_filtered[selected_df_filtered['unique_id'] == i][idx].values[0]})
+                
 
-            response = dbc.Row([
-                dbc.Row([
-                    html.Div(
-                        dbc.Accordion(
-                            accordion_content,
-                            flush=True,
-                        ),
+                # for source in similarity_pairs:
+                #     for id in similarity_pairs[source]:
+                #         if source == 'reddit':
+                #             similarity_df_reddit = pd.DataFrame(similarity_pairs[source][id])
+                #         elif source == 'arxiv':
+                #             similarity_df_arxiv = pd.DataFrame(similarity_pairs[source][id])
+
+                accordion_content = list()
+                counter = 0
+                for document in df_corpus_filtered.to_dict('records'):
+                    s_cards = [html.Div([html.H4("Similar content")])]
+                    if counter < 15:
+                        similarity_cards = list()
+                        if str(document['id']) in similarity_pairs[document['source']]:
+                            for similar_document in similarity_pairs[document['source']][str(document['id'])]:
+                                similar_doc = corpus.get_document(similar_document['similar_id'])
+                                s_cards.append(dbc.Card(
+                                        [
+                                            dbc.CardBody(
+                                                [
+                                                    html.H5(f"{similar_doc.source}", className="card-title"),
+                                                    html.P(f"{similar_doc.title}"),
+                                                    html.Hr(),
+                                                    html.A("Article link", href=similar_doc.url, target="_blank"),
+                                                    html.Br(),
+                                                    html.A(f"Similarity score: {similar_document['similarity']}"),
+                                                ]
+                                            )
+                                        ],style={"width": "18rem"},
+                                    ))
+
+                        similarity_cards =  dbc.Row(
+                            # +
+                            [dbc.Col(card, width="auto")
+                             if len(s_cards) > 0 
+                             else html.Div([html.H4("No similar content")]) for card in s_cards]
+                        
                     )
+                        accordion_content += dbc.AccordionItem(                            
+                            html.Div(
+                                [
+                                    html.H1(clean_text(document['title'])), 
+                                    html.P(document['text']),
+                                    dbc.CardLink("Article link", href=document['url']),
+                                    dbc.Row(
+                                        similarity_cards
+                                    )
+                            ]),
+                            str(document), 
+                            title=f"{document['id']}-{clean_text(document['title'])}",
+                            item_id=f"item-{counter}",
+                        ),
+                    else:
+                        break
+                    counter += 1
+                    
+                
+                table_scores = dbc.Table.from_dataframe(df_corpus_filtered, striped=True, bordered=True, hover=True, id='tbl_scores')
 
+                response = dbc.Row([
+                    dbc.Row([
+                        html.Div(
+                            dbc.Accordion(
+                                accordion_content,
+                                flush=True,
+                                active_item="item-0",
+                            ),
+                        )
+
+                    ])
                 ])
-            ])
-            
-            return response
+                
+                return response
+            else:
+                return  dbc.Alert(
+                [
+                    html.I(className="bi bi-exclamation-triangle-fill me-2"),
+                    "No data founded for this topic an key word combination",
+                ],
+                color="warning",
+                className="d-flex align-items-center",
+            )
             
         except TypeError as t:
             logging.error(t)
@@ -220,74 +276,6 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
                 className="d-flex align-items-center",
             )
 
-# @app.callback(
-#     Output('tab-similarity', 'children'), 
-#     [
-#         # Input("tbl", "n_clicks"),
-#         # State("keyword-text", "value"),
-#         Input("tbl_scores", "active_cell")
-#     ]
-# )
-# def rendre_table_similarity(active_cell):
-#     return active_cell
-
     
 if __name__ == '__main__':
     app.run_server(debug=True)
-    
-    
-    
-                                # table_scores = dash_table.DataTable(
-                    #     data=df_corpus.to_dict('records'),
-                    #     columns=[{'id': str(c), 'name': str(c)} for c in df_corpus.columns],
-                    #     style_cell={'textAlign': 'left'},
-                    #     # Options de pagination
-                    #     page_current=0,
-                    #     page_size=PAGE_ZISE,
-                    #     style_cell_conditional=[
-                    #         {
-                    #             'if': {'column_id': 'name'},
-                    #             'textAlign': 'left'
-                    #         },
-                    #     ], id='tbl_scores'
-                    #     # striped=True, bordered=True, hover=True, id='tbl_scores',
-                    # )
-                    # dbc.Table.from_dataframe(df_corpus, striped=True, bordered=True, hover=True, id='tbl_scores')
-                    
-                    # html.Div([table_scores])
-                    
-                    # dbc.Spinner(
-                    #     id="tab-similarity",
-                    #     children=[html.Div([html.Div(id="loading-output-similarity")])],
-                    #     color="primary",
-                    # ),
-                    # dbc.Col(html.Div([html.H1("Arxiv"), html.Div(id='tbl_arxiv')]))
-                    # dbc.Col(html.Div([html.H1("Arxiv"), table_reddit])),
-                    
-                    
-                    
-            # merged_df = pd.concat([df_reddit, df_arxiv])
-            # vectorizer = TfidfVectorizer(stop_words='english')
-            
-            # tditdf_matrix = vectorizer.fit_transform(merged_df['text'])
-            
-            # cosine_similarity_matrix = cosine_similarity(tditdf_matrix, tditdf_matrix)
-
-            # similarity_df = pd.DataFrame(cosine_similarity_matrix, index=merged_df['id'], columns=merged_df['id'])
-            
-            # # Mostrar los términos más relacionados
-            # threshold = 0.5  # Puedes ajustar este umbral según tus necesidades
-            # related_terms = {}
-
-            # for idx in similarity_df.index:
-            #     print(idx)
-            #     related_texts = similarity_df[similarity_df[idx] > threshold].index.tolist()
-            #     related_texts.remove(idx)  # Excluir el propio texto
-            #     if related_texts:
-            #         related_terms[idx] = related_texts
-            # # print(related_terms)
-                    
-            # df_related_terms = pd.DataFrame.from_dict(df_reddit, orient='index')
-            # table_reddit = dbc.Table.from_dataframe(df_reddit, striped=True, bordered=True, hover=True)
-
-            

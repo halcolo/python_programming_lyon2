@@ -1,11 +1,16 @@
+import os
+import datetime
 import logging
 import config   
 import pandas as pd
 import numpy as np
+import pickle
+from collections import defaultdict
 from modules.corpus import Corpus
-from utils.tools import clean_text_util
+from utils.tools import clean_paragraph_util
 from scipy.sparse import csr_matrix
 from modules.factory import DocumentFactory
+from modules.document import ArxivDocument, RedditDocument
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -14,10 +19,10 @@ def calculate_similarity_articles(df):
 
     try:
         df['unique_id'] = df['source'] + '_' + df['id'].astype(str)
-
+        df['text_corpus'] = df['title'] + ' ' + df['text'] 
         # Create and apply TF-IDF vectorizer to texts
         vectorizer = TfidfVectorizer(stop_words='english')
-        tfidf_matrix = vectorizer.fit_transform(df['text'])
+        tfidf_matrix = vectorizer.fit_transform(df['text_corpus'])
 
         # cosine similarity for all texts in corpus
         cosine_similarities = cosine_similarity(tfidf_matrix, tfidf_matrix)
@@ -54,44 +59,53 @@ def search_documents(processes: list):
         ValueError: If no data is provided or if the credentials are incorrect.
         TypeError: If there is a type error.
     """
-    try:
-        document_collection = list()
-        
-        for process in processes:
-            if process.get("type") is None or process.get("keyword") is None:
-                raise TypeError('Missing arguments')
-            process_type = process.get("type")
-            keyword = process.get("keyword")
-            quantity = process.get("quantity", 10)
-            
-            args = {
-                "type_process": process_type,
-                "keyword": keyword,
-                "max_results": quantity
-            }
-
-            retrieved_documents = DocumentFactory(data=args).create_document()
-
-            # Check if data is not empty
-            if retrieved_documents is None:
-                raise ValueError('No data provided, check your credentials')
-
-
-            document_collection += retrieved_documents.set_documents()
-            corpus = Corpus()
-            for i in range(len(document_collection)):
-                doc = document_collection[i]
-                corpus.add(author=doc.author , doc=doc)
-
-        return corpus
-
-    except TypeError as t:
-        logging.error(t)
-        raise TypeError
-    except ValueError as v:
-        logging.error(v)
-        raise ValueError
-
+    
+    pkl_file_name = f'corpus{datetime.datetime.now().strftime("%d%m%y")}{processes[0].get("topic")}.pkl'
+    pkl_file_path = 'data/' + pkl_file_name
+    
+    # Check if the pickle file exists to avoid recharacterizing the corpus
+    if os.path.exists(pkl_file_path):
+        with open(pkl_file_path, 'rb') as file:
+            corpus = pickle.load(file)
+        logging.warn(f'Corpus loaded from {pkl_file_path}')
+    else:
+        try:
+            for process in processes:
+                if process.get("type") is None or process.get("keyword") is None:
+                    raise TypeError('Missing arguments')
+                process_type = process.get("type")
+                keyword = process.get("keyword")
+                quantity = process.get("quantity", 10)
+                
+                args = {
+                    "type_process": process_type,
+                    "keyword": keyword,
+                    "max_results": quantity
+                }
+                retrieved_documents = DocumentFactory(data=args).create_document()
+                print('source', process_type)
+                document_collection = retrieved_documents.set_documents()
+                print('retrieved_documents', len(document_collection))
+                
+                corpus = Corpus()
+                
+                # Check if data is not empty
+                if len(document_collection) == 0:
+                    raise TypeError(f'No data provided by the API {process_type}')
+                for i in range(len(document_collection)):
+                    doc = document_collection[i]
+                    corpus.add(author=doc.author , doc=doc)
+                    
+        except TypeError as t:
+            logging.error(t)
+            raise TypeError
+        except ValueError as v:
+            logging.error(v)
+            raise ValueError
+    # Save the corpus to a pickle file
+    with open(pkl_file_path, 'wb') as file:
+        pickle.dump(corpus, file, fix_imports=False)
+    return corpus
 
 
 ## DEPRECATED
@@ -137,7 +151,7 @@ def words_it_idf(collection:list) -> dict:
     idf = dict()
     
     for i, doc in enumerate(collection):
-        words = clean_text_util(doc.text)
+        words = clean_paragraph_util(doc.text)
         unique_words = set(words)
         for word in unique_words:
             if word in vocab.keys():
@@ -177,7 +191,7 @@ def search_engine(collection:list, keywords:list):
         
         new_collection[i] = dict()
         
-        words = clean_text_util(doc.text)
+        words = clean_paragraph_util(doc.text)
         unique_words = set(words)
         vocab += unique_words
         word_counts = dict()
@@ -227,3 +241,20 @@ def search_engine(collection:list, keywords:list):
     
 
     return filtered_results
+
+
+def calculate_word_freq_per_year(corpus, words_to_track):
+    word_freq_per_year = defaultdict(lambda: defaultdict(int))
+    
+    for doc in list(corpus.documents.values()):
+        try:
+            date = doc.date
+            year = date.year
+        except ValueError:
+            continue
+        for word in words_to_track:
+            word_freq = doc.text.lower().count(word.lower())
+            key = (word, str(year))
+            word_freq_per_year[key] = word_freq
+    
+    return word_freq_per_year
