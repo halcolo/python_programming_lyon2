@@ -5,7 +5,7 @@ import config
 import pandas as pd
 import numpy as np
 import pickle
-from collections import defaultdict
+
 from modules.corpus import Corpus
 from utils.tools import clean_paragraph_util
 from scipy.sparse import csr_matrix
@@ -83,9 +83,7 @@ def search_documents(processes: list):
                     "max_results": quantity
                 }
                 retrieved_documents = DocumentFactory(data=args).create_document()
-                print('source', process_type)
                 document_collection = retrieved_documents.set_documents()
-                print('retrieved_documents', len(document_collection))
                 
                 corpus = Corpus()
                 
@@ -94,7 +92,8 @@ def search_documents(processes: list):
                     raise TypeError(f'No data provided by the API {process_type}')
                 for i in range(len(document_collection)):
                     doc = document_collection[i]
-                    corpus.add(author=doc.author , doc=doc)
+                    author = doc.author if doc.author is not None else 'Anonymous'
+                    corpus.add(author=author , doc=doc)
                     
         except TypeError as t:
             logging.error(t)
@@ -241,23 +240,6 @@ def search_engine(collection:list, keywords:list):
     
 
     return filtered_results
-
-
-def calculate_word_freq_per_year(corpus, words_to_track):
-    word_freq_per_year = defaultdict(lambda: defaultdict(int))
-    for doc in list(corpus.documents.values()):
-        try:
-            date = doc.date
-            year = date.year
-        except ValueError:
-            continue
-        text = doc.text.lower() + ' ' + doc.title.lower()
-        for word in words_to_track:
-            word_freq = text.count(word.lower())
-            key = (word, str(year))
-            word_freq_per_year[key] = word_freq
-    
-    return word_freq_per_year
 
 
 def process_similarity_pairs(df_corpus, similarity_df):

@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
+from config import img
 from dash import Dash, dash_table, html, dcc
 from dash.dependencies import Input, Output, State
 from utils.tools import (
@@ -17,7 +18,6 @@ from utils.program import (
     search_engine,
     calculate_similarity_articles,
     process_similarity_pairs,
-    calculate_word_freq_per_year,
 )
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -31,11 +31,15 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTS
 
 # Define layout components
 content_name = [
-    html.H1("Search engine"),
-    dbc.Alert(
-        "Please set your credentials in the 'config.py' file",
-        color="danger"
-    ) if any(os.environ.get('CLIENT_SECRET') is None for _ in range(3)) else None
+    dbc.Row([
+        html.H1("Search engine", className="display-4", style={"textAlign": "center"}),
+    ]),
+    dbc.Row([
+        dbc.Alert(
+            "Please set your credentials in the 'config.py' file",
+            color="danger"
+        ) 
+    if any(os.environ.get('CLIENT_SECRET') is None for _ in range(3)) else None ])
 ]
 
 data_table = dash_table.DataTable(
@@ -84,7 +88,7 @@ form = dbc.Form([
     dbc.Row([
         dbc.Col(
             html.Div([
-                dbc.Col(html.Div([html.H1("Results")])),
+                dbc.Col(html.Div([html.H2("Search Results")])),
                 html.Div([loading_obj]),
             ])
         ),
@@ -100,6 +104,18 @@ app.layout = dbc.Container(form, fluid=True)
     [Input("add-btn", "n_clicks"), State("keyword-text", "value"), State("tbl", "active_cell")]
 )
 def render_tab_content(n_clicks, keyword_text, active_cell):
+    
+    # default response
+    response = dbc.Alert(
+        [
+            html.I(className="bi bi-info-circle-fill me-2"),
+            "Please select a row and enter a keyword",
+        ],
+        color="info",
+        className="d-flex align-items-center",
+    ),
+    
+    fig = go.Figure()
     if active_cell and keyword_text is not None:
         arxiv_kw = df.iloc[active_cell['row']]['Subject']
         subreddit_kw = df.iloc[active_cell['row']]['Subreddit']
@@ -116,7 +132,7 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
 
             response_search_engine = search_engine(corpus.docs_to_collection(), tokens_kw)
             df_scores = pd.DataFrame(response_search_engine)
-
+            
             if len(df_scores) > 0:
                 df_scores['id'] = df_scores['id'].astype(str)
                 df_corpus['id'] = df_corpus['id'].astype(str)
@@ -129,24 +145,41 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
                 accordion_content = []
 
                 for document in df_corpus_filtered.to_dict('records'):
-                    s_cards = [html.Div([html.H4("Similar content")])]
+                    s_cards = [dbc.Col(html.Div([html.H4("Similar content")])), html.Br()]
                     if len(accordion_content) < 15:
                         if str(document['id']) in similarity_pairs[document['source']]:
                             for similar_document in similarity_pairs[document['source']][str(document['id'])]:
                                 similar_doc = corpus.get_document(similar_document['similar_id'])
                                 normalized_score = normalize_value(float(similar_document['similarity']), 0, 0.01)
-                                score_etiquete = label_from_normalized_value(normalized_score)
+                                score = label_from_normalized_value(normalized_score)
+                                if score == 2:
+                                    score_etiqute = dbc.Button("Very Hight", size="sm", color="success", href=similar_doc.url, target="_blank"),
+                                elif score == 1:
+                                    score_etiqute = dbc.Button("High", size="sm", color="info", href=similar_doc.url, target="_blank"),
+                                else:   
+                                    score_etiqute = dbc.Button("Low", size="sm", color="secondary", href=similar_doc.url, target="_blank"),
+                                    
+                                if similar_doc.source == 'reddit':
+                                    img_path = img.get('reddit_logo')
+                                else:
+                                    img_path = img.get('arxiv_logo')
                                 s_cards.append(
                                     dbc.Card(
                                         [
                                             dbc.CardBody(
                                                 [
-                                                    html.H5(f"{similar_doc.source}", className="card-title"),
+                                                    dbc.Row([
+                                                        dbc.Col(html.H5(f"{similar_doc.source}", className="card-title")),
+                                                        dbc.Col(html.Img(src=img_path, width="25", height="25"),width="auto")
+                                                    ]),
                                                     html.P(f"{similar_doc.title}"),
                                                     html.Hr(),
                                                     html.A("Article link", href=similar_doc.url, target="_blank"),
                                                     html.Br(),
-                                                    dbc.FormText(f"Similarity score: {score_etiquete}"),
+                                                    dbc.Row([
+                                                        dbc.Col(dbc.FormText(f"Similarity etiquet:"), width="auto"),
+                                                        dbc.Col(score_etiqute, width="auto")
+                                                    ]),
                                                 ]
                                             )
                                         ],
@@ -158,19 +191,28 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
                             [dbc.Col(card, width="auto") if len(s_cards) > 0 else html.Div([html.H4("No similar content")])
                              for card in s_cards]
                         )
-
+                        if document['source'] == 'reddit':
+                            acc_img_path = img.get('reddit_logo')
+                        else:  
+                            acc_img_path = img.get('arxiv_logo')
+                            
                         accordion_content.append(
                             dbc.AccordionItem(
                                 html.Div(
-                                    [
-                                        html.H1(clean_text(document['title'])),
-                                        html.P(document['text']),
-                                        dbc.CardLink("Article link", href=document['url']),
-                                        dbc.Row(similarity_cards)
+                                    [   
+                                        
+                                        dbc.Row([
+                                            dbc.Col(html.Img(src=acc_img_path, width="25", height="25"),width="auto"),
+                                            dbc.Col(html.H1(clean_text(document['title']))), 
+                                        ]),
+                                        dbc.Col(html.P(document['text'])),
+                                        dbc.Col(dbc.FormText(f"Author: {document['author']}")),
+                                        dbc.Col(dbc.CardLink("Article link", href=document['url'],target="_blank")),
+                                        dbc.Col(dbc.Row(similarity_cards))
                                     ]
                                 ),
                                 str(document),
-                                title=f"{document['id']}-{clean_text(document['title'])}",
+                                title=f"{document['id']}-{clean_text(document['title'])} - {document['source']}",
                                 item_id=f"item-{len(accordion_content)}"
                             )
                         )
@@ -189,25 +231,22 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
                     ])
                 ])
 
-                fig = go.Figure()
-                word_freq_per_year = calculate_word_freq_per_year(corpus, tokens_kw)
-                count = 0
+                
+                word_freq_per_year = corpus.calculate_word_freq_per_year(tokens_kw)
                 for word in tokens_kw:
-                    if count < 2:
-                        word_freqs = {key[1]: value for key, value in word_freq_per_year.items() if key[0] == word}
-                        years, frequency = zip(*sorted(word_freqs.items()))
-                        
-                        fig.add_trace(go.Scatter(x=years, y=frequency, mode='lines+markers', name=word))
-                        
+                    word_freqs = {key[1]: word_freq_per_year[(word.lower(), key[1])] for key in word_freq_per_year if key[0] == word.lower()}
+                    years, frequency = zip(*sorted(word_freqs.items()))
+                    fig.add_trace(go.Scatter(x=years, y=frequency, mode='lines+markers', name=word))
+                 
                 fig.update_layout(
                     title='Evolution of Word Usage Over Time',
                     xaxis_title='Year',
                     yaxis_title='Word Count',
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 )
-                return response, fig
+                response
             else:
-                return dbc.Alert(
+                response =  dbc.Alert(
                     [
                         html.I(className="bi bi-exclamation-triangle-fill me-2"),
                         "No data found for this topic and keyword combination",
@@ -220,48 +259,7 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
             logging.error(e)
             raise e
 
-    return dbc.Alert(
-        [
-            html.I(className="bi bi-info-circle-fill me-2"),
-            "Please select a row and enter a keyword",
-        ],
-        color="info",
-        className="d-flex align-items-center",
-    ), go.Figure()
-
-
-# @app.callback(
-#     Output('word-evo-graph', 'figure'),
-#     [Input("add-btn", "n_clicks"), State("keyword-text", "value") , State("tbl", "active_cell")]
-# )
-# def cb_words_evolution_graph(n_clicks, keyword_text, active_cell):
-#     if active_cell and keyword_text is not None:
-#         arxiv_kw = df.iloc[active_cell['row']]['Subject']
-#         subreddit_kw = df.iloc[active_cell['row']]['Subreddit']
-        
-#         # time.sleep(4)
-#         fig = go.Figure()
-#         search_request = [
-#             {'type': 'reddit', 'keyword': subreddit_kw, 'topic': subreddit_kw, 'quantity': 100},
-#             {'type': 'arxiv', 'keyword': arxiv_kw, 'topic': subreddit_kw, 'quantity': 100}
-#         ]
-#         corpus = search_documents(search_request)
-#         word_freq_per_year = calculate_word_freq_per_year(corpus, keyword_text)
-#         count = 0
-#         for word in keyword_text:
-#             if count < 2:
-#                 word_freqs = {key[1]: value for key, value in word_freq_per_year.items() if key[0] == word}
-#                 years, frequency = zip(*sorted(word_freqs.items()))
-                
-#                 fig.add_trace(go.Scatter(x=years, y=frequency, mode='lines+markers', name=word))
-                
-#         fig.update_layout(
-#             title='Evolution of Word Usage Over Time',
-#             xaxis_title='Year',
-#             yaxis_title='Word Count',
-#             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-#         )
-#         return fig
+    return response, fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
