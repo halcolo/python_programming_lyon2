@@ -149,3 +149,20 @@ def clean_text(text):
     text = ' '.join(text.split())
     
     return text
+
+def normalize_value(value, min_value, max_value):
+    if min_value == max_value:
+        return 0.5  
+    return (value - min_value) / (max_value - min_value)
+
+def label_from_normalized_value(normalized_value):
+    if normalized_value < 0.2:
+        return "Very Low"
+    elif 0.2 <= normalized_value < 0.4:
+        return "Low"
+    elif 0.4 <= normalized_value < 0.6:
+        return "Moderate"
+    elif 0.6 <= normalized_value < 0.8:
+        return "High"
+    else:
+        return "Very High"

@@ -258,3 +258,27 @@ def calculate_word_freq_per_year(corpus, words_to_track):
             word_freq_per_year[key] = word_freq
     
     return word_freq_per_year
+
+
+def process_similarity_pairs(df_corpus, similarity_df):
+    similarity_pairs = {'reddit': {}, 'arxiv': {}}
+    
+    for idx in df_corpus['unique_id'].tolist():
+        similarity_pairs[idx.split('_')[0]][idx.split('_')[1]] = []
+        selected_rows = similarity_df.loc[df_corpus['unique_id'], idx]
+        selected_df = selected_rows.reset_index()
+        selected_df_sorted = selected_df.sort_values(by=idx, ascending=False)
+        selected_df_sorted = selected_df_sorted.drop(selected_df_sorted[selected_df_sorted['unique_id'] == idx].index)
+        selected_df_sorted = selected_df_sorted.drop(selected_df_sorted[selected_df_sorted[idx] <= float(0.0)].index)
+        
+        if len(selected_df_sorted) > 0:
+            selected_df_filtered = selected_df_sorted.tail(3)
+            
+            for i in selected_df_filtered['unique_id'].tolist():
+                similarity_pairs[idx.split('_')[0]][idx.split('_')[1]].append({
+                    'similar_source': i.split('_')[0],
+                    'similar_id': i.split('_')[1],
+                    'similarity': selected_df_filtered[selected_df_filtered['unique_id'] == i][idx].values[0]
+                })
+    
+    return similarity_pairs
