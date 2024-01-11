@@ -1,11 +1,14 @@
 import re
+import pickle
 import pandas as pd
 from pprint import pformat
 from tabulate import tabulate
 from modules.author import Author
-import pickle
 from collections import defaultdict
-from utils.tools import clean_paragraph_util, SingletonMeta
+from utils.tools import clean_paragraph
+from modules.singleton import SingletonMeta
+from collections import Counter
+from typing import List, Tuple
 
 
 class Corpus(metaclass=SingletonMeta):
@@ -70,7 +73,7 @@ class Corpus(metaclass=SingletonMeta):
         if self.__concated_text is None:
             self.__concated_text = "".join([doc.text for doc in self.documents.values()])
 
-    def search_text(self, keyword: str) -> list:
+    def search_text(self, keyword: str) -> List[Tuple[int, int, int]]:
         """
         Search for passages in the documents containing the given keyword.
 
@@ -78,7 +81,8 @@ class Corpus(metaclass=SingletonMeta):
             keyword (str): The keyword to search for.
 
         Returns:
-            list: A list of tuples containing the matched key word start, end positions and document id.
+            list: A list of tuples containing the matched key word start, end 
+                positions and document id.
         """
         self.__concat_data()
 
@@ -90,7 +94,7 @@ class Corpus(metaclass=SingletonMeta):
 
         return matches
 
-    def __clean_text(self, doc: str = None) -> None:
+    def __clean_text(self, doc:str=None) -> None:
         """
         Clean the text of a document.
 
@@ -108,7 +112,7 @@ class Corpus(metaclass=SingletonMeta):
         else:
             cleaned_doc = doc
 
-        words = clean_paragraph_util(cleaned_doc)
+        words = clean_paragraph(cleaned_doc)
         cleaned_doc = ' '.join(words)
 
         return cleaned_doc
@@ -143,7 +147,7 @@ class Corpus(metaclass=SingletonMeta):
 
         return data
 
-    def docs_to_collection(self) -> list:
+    def docs_to_collection(self) -> List[str]:
         """
         Get all documents in the corpus in a list.
         Used as collection of all documents objects in the corpus.
@@ -208,34 +212,39 @@ class Corpus(metaclass=SingletonMeta):
             path (str): The path to the pickle file.
         """
         with open(path, 'rb') as file:
-            self.documents = pickle.load(file)
+            data = pickle.load(file)
+            self.documents = data['documents']
+            self.authors = data['authors']
+            self.__author_to_id = data['__author_to_id']
             
     
-    def calculate_word_freq_per_year(self, words_to_track:list) -> defaultdict:
-            """
-            Calculates the word frequency per year for the given list of words.
+    def calculate_word_freq_per_year(self, words_to_track:List[str]) -> defaultdict:
+        """
+        Calculates the word frequency per year for the given list of words.
 
-            Args:
-                words_to_track (list): A list of words to track the frequency of.
+        Args:
+            words_to_track (list): A list of words to track the frequency of.
 
-            Returns:
-                defaultdict: A nested defaultdict containing the word frequency per year.
-            """
-            word_freq_per_year = defaultdict(lambda: defaultdict(int))
+        Returns:
+            defaultdict: A nested defaultdict containing the word frequency per year.
+        """
+        word_freq_per_year = defaultdict(lambda: defaultdict(int))
 
-            for doc in self.documents.values():
-                try:
-                    date = doc.date
-                    year = date.year
-                except (ValueError, AttributeError):
-                    continue
+        for doc in self.documents.values():
+            try:
+                date = doc.date
+                year = date.year
+            except (ValueError, AttributeError):
+                continue
 
-                text = (doc.text + ' ' + doc.title).lower()
-                for word in words_to_track:
-                    word_freq = text.split().count(word.lower())
-                    key = (word.lower(), str(year))
-                    if key in word_freq_per_year.keys():
-                        word_freq += word_freq_per_year[key]
-                    word_freq_per_year[key] = word_freq
+            text = (doc.text + ' ' + doc.title).lower()
+            word_counter = Counter(text.split())
 
-            return word_freq_per_year
+            for word in words_to_track:
+                word_freq = word_counter[word.lower()]
+                key = (word.lower(), str(year))
+                if key in word_freq_per_year.keys():
+                    word_freq += word_freq_per_year[key]
+                word_freq_per_year[key] = word_freq
+
+        return word_freq_per_year

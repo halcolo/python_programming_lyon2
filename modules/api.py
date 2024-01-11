@@ -1,11 +1,12 @@
-import praw
+import logging
+import requests
 import xmltodict
 import datetime
-import requests
-from config import reddit_auth
-from modules.document import ArxivDocument
+import praw
+import config
 from praw.exceptions import RedditAPIException
-from modules.document import RedditDocument
+from config import reddit_auth
+from modules.document import ArxivDocument, RedditDocument
 
 class RedditApi:
     def __init__(self, subreddit, max_results=10):
@@ -32,9 +33,6 @@ class RedditApi:
         """
         Retrieves data from the specified subreddit.
         
-        Args:
-            limit (int): The maximum number of posts to retrieve. Default is 10.
-        
         Returns:
             praw.models.ListingGenerator: A generator object containing the retrieved posts.
         """
@@ -43,8 +41,8 @@ class RedditApi:
             return self.data
         except RedditAPIException as e:
             raise ValueError(f'Error retrieving data: {e}')
-        except Exception as e:
-            raise ValueError(f'Error retrieving data: {e}')
+        except KeyError as e:
+            raise KeyError(f'Error retrieving data: {e}')
     
 
     def check_data(self):
@@ -52,7 +50,7 @@ class RedditApi:
         Checks if the data collection is available.
         If the data is not available, it retrieves it.
         """
-        if isinstance(self.data, list) and len(self.data) == 0:
+        if isinstance(self.data, list) and not self.data:
             self.get_data()
         
     def set_documents(self):
@@ -68,9 +66,7 @@ class RedditApi:
         if self.data is None:
             raise ValueError('No data found. Check your credentials.')
         
-        for document in self.data:
-            if document is not None:
-                collection.append(RedditDocument.from_praw(document))
+        collection = [RedditDocument.from_praw(doc) for doc in self.data if doc is not None]
         
         return collection
     
@@ -117,7 +113,7 @@ class ArxivApi:
                 else:
                     return self.data['entry']
         except requests.RequestException:
-            pass
+            logging.error('Error retrieving data from ARXIV API')
         return None
     
     def set_documents(self) -> list:
@@ -130,7 +126,11 @@ class ArxivApi:
         if self.data is None:
             self.get_data()
 
-        entries = self.data['entry']
+        try:
+            entries = self.data['entry']
+        except KeyError:
+            return []  # Return an empty list if 'entry' key is not found
+
         collection = [
             ArxivDocument(
                 title=document['title'],
@@ -156,7 +156,7 @@ class ArxivApi:
         if 'start' in kwargs:
             self.start = kwargs['start']
         if 'max_results' in kwargs:
-            self.start = kwargs['max_results']
+            self.max_results = kwargs['max_results']
             
         self.query_params = {
             'search_query': f'all:{self.keyword}',

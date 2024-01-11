@@ -6,9 +6,9 @@ img = {
     "arxiv_logo": "https://github.com/jdalfons/search_engine/assets/25759070/ae7e2ecf-1d4a-4779-a825-673bb2a83d6d",
 }
 
-CLIENT_SECRET = None
-USER_AGENT = None
-CLIENT_ID = None
+CLIENT_SECRET = "g8rgC38cYd2-CssRhI654dxlHjTUrw"
+USER_AGENT = "test_python_bot"
+CLIENT_ID = "itnNCnpIdc9GvcJ0wDm6fg"
 
 if CLIENT_SECRET is not None and USER_AGENT is not None and CLIENT_ID is not None:
     os.environ["CLIENT_SECRET"] = CLIENT_SECRET 

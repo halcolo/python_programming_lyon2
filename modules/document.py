@@ -1,6 +1,4 @@
 import datetime
-import requests
-import xmltodict
 
 class Document:
     """
@@ -89,7 +87,16 @@ class RedditDocument(Document):
     
     
     @classmethod
-    def from_praw(cls, praw_document):
+    def from_praw(cls, praw_document) -> Document:
+        """
+        Convert a PRAW document object to a custom Document object.
+
+        Args:
+            praw_document (praw.models.Submission): The PRAW document object to convert.
+
+        Returns:
+            Document: The converted Document object.
+        """
         if praw_document.author is not None:
             if praw_document.author is not None:
                 aut_name = praw_document.author.name if praw_document.author.name is not None else 'Anonymous'

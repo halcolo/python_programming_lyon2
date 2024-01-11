@@ -1,38 +1,21 @@
-import sys
 import os
 import re
 import string
-import numpy as np
-from nltk.tokenize import RegexpTokenizer
+from typing import List
 import nltk
-
+from nltk.tokenize import RegexpTokenizer
+from nltk.corpus import stopwords
 
 try:
     from nltk.corpus import stopwords
 except ImportError:
     nltk.download('stopwords')
     from nltk.corpus import stopwords
-from nltk.corpus import stopwords
 
+from modules.auth import RedditAuth
 
-class RedditAuth:
-    """
-    Class representing Reddit authentication credentials.
-    """
-    def __init__(self, client_secret: str, user_agent: str, client_id: str) -> None:
-        """
-        Initialize a RedditAuth object.
         
-        Args::
-            client_secret (str): The client secret.
-            user_agent (str): The user agent.
-            client_id (str): The client ID.
-        """
-        self.client_secret = client_secret
-        self.user_agent = user_agent
-        self.client_id = client_id
-
-def set_vars():
+def set_vars() -> RedditAuth:
     """
     Set environment variables for Reddit authentication.
 
@@ -49,31 +32,16 @@ def set_vars():
     user_agent = os.environ.get("USER_AGENT")
     client_id = os.environ.get("CLIENT_ID")
 
-    reddit_auth = RedditAuth(
+    reddit_auth_setup = RedditAuth(
         client_secret=client_secret,
         user_agent=user_agent,
         client_id=client_id,
     )
-    return reddit_auth
-
-def print_progress_bar(index, total, label):
-    """
-    Print a progress bar to the console.
-    
-    Args::
-        index (int): The current index.
-        total (int): The total number of iterations.
-        label (str): The label to display.
-    """
-    n_bar = 50  # Progress bar width
-    progress = index / total
-    sys.stdout.write('\r')
-    sys.stdout.write(f"[{'=' * int(n_bar * progress):{n_bar}s}] {int(100 * progress)}%  {label}")
-    sys.stdout.flush()
+    return reddit_auth_setup
 
 
 
-def clean_paragraph_util(text:str) -> list:
+def clean_paragraph(text: str) -> List[str]:
     """
     Cleans the given text by removing special characters, punctuation, and stopwords.
 
@@ -81,7 +49,7 @@ def clean_paragraph_util(text:str) -> list:
         text (str): The text to be cleaned.
 
     Returns:
-        list: The cleaned text as list.
+        List[str]: The cleaned text as list.
     """
 
     stopwords_set = set(stopwords.words('english'))
@@ -89,15 +57,15 @@ def clean_paragraph_util(text:str) -> list:
     # Separing, removing all special characters and not used words in tokenized text
     token = RegexpTokenizer(r'''\w'|\w+|[^\w\s]''')
     tokens = token.tokenize(text)
-    tokens = list(token for token in tokens if token not in string.punctuation)
-    tokens = list(token for token in tokens if token not in stopwords_set)
-    tokens = list(token for token in tokens if len(token) > 2)
-    tokens = list(token.translate(str.maketrans('', '', string.punctuation)).lower() for token in tokens)
+    tokens = [token for token in tokens if token not in string.punctuation]
+    tokens = [token for token in tokens if token not in stopwords_set]
+    tokens = [token for token in tokens if len(token) > 2]
+    tokens = [token.translate(str.maketrans('', '', string.punctuation)).lower() for token in tokens]
     
     return tokens
 
 
-def clean_text(text):
+def clean_text(text: str) -> str:
     """
     Clean the given text by removing square brackets and their contents,
     removing non-alphanumeric characters except for important symbols and spaces,
@@ -109,13 +77,13 @@ def clean_text(text):
     Returns:
         str: The cleaned text.
     """
-    text = re.sub(r'\[.*?\]', '', text)
-    text = re.sub(r"[^a-zA-Z0-9',?:!\s]", '', text)
-    text = ' '.join(text.split())
+    text = re.sub(r'\[.*?\]', '', text)  # Remove square brackets and their contents
+    text = re.sub(r"[^a-zA-Z0-9',?:!\s]", '', text)  # Remove non-alphanumeric characters
+    text = re.sub(r'\s+', ' ', text)  # Remove extra spaces
     
     return text
 
-def normalize_value(value, min_value, max_value):
+def normalize_value(value: float, min_value: float, max_value: float) -> float:
     """
     Normalize a value between 0 and 1 based on the given minimum and maximum values.
 
@@ -131,7 +99,7 @@ def normalize_value(value, min_value, max_value):
         return 0.5  
     return (value - min_value) / (max_value - min_value)
 
-def label_from_normalized_value(normalized_value):
+def label_from_normalized_value(normalized_value: float) -> int:
     """
     Assigns a label based on the given normalized value.
     
@@ -152,26 +120,4 @@ def label_from_normalized_value(normalized_value):
         return 1
     else:
         return 2
-    
-class SingletonMeta(type):
-    """
-    Metaclass for implementing the Singleton design pattern.
 
-    This metaclass ensures that only one instance of a class is created and
-    provides a global point of access to that instance.
-
-    Usage:
-    class MyClass(metaclass=SingletonMeta):
-        # class definition
-
-    Note:
-    This metaclass should be used as the metaclass of the class that needs to
-    be a singleton.
-    """
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]

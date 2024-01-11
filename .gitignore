@@ -166,7 +166,7 @@ cython_debug/
 .DS_Store
 
 # pickle files
-*.pickle
-*.pkl
+# *.pickle
+# *.pkl
 
 test.ipynb

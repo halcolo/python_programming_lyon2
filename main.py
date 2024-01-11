@@ -8,16 +8,18 @@ from config import img
 from dash import Dash, dash_table, html, dcc
 from dash.dependencies import Input, Output, State
 from utils.tools import (
-    clean_paragraph_util, 
+    clean_paragraph, 
     clean_text, 
     normalize_value,
     label_from_normalized_value,
 )
-from utils.program import (
-    search_documents,
-    search_engine,
+from utils.func_processing import (
     calculate_similarity_articles,
     process_similarity_pairs,
+)
+from utils.func_retrieval import (
+    search_documents,
+    search_engine,   
 )
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -127,7 +129,7 @@ def render_tab_content(n_clicks, keyword_text, active_cell):
             ]
 
             corpus = search_documents(search_request)
-            tokens_kw = clean_paragraph_util(keyword_text)
+            tokens_kw = clean_paragraph(keyword_text)
             df_corpus = corpus.to_dataframe()
 
             response_search_engine = search_engine(corpus.docs_to_collection(), tokens_kw)
