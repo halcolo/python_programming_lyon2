@@ -6,7 +6,7 @@ class Author:
         """
         Initialize an Author object.
         
-        Parameters:
+        Args::
             name (str): The name of the author.
         """
         self.name = name
@@ -23,7 +23,7 @@ class Author:
         """
         Add an article to the author's production.
         
-        Parameters:
+        Args::
             article (str): The article to add.
         """
         self.nDoc += 1 

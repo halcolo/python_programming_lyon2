@@ -1,6 +1,8 @@
 import unittest
-import json
-from modules.arxiv_api import ArxivApi
+
+from modules.api import ArxivApi
+
+
 
 class TestArxivAPI(unittest.TestCase):
     def setUp(self):

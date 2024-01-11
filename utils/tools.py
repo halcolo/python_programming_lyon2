@@ -1,32 +1,21 @@
-import sys
 import os
+import re
 import string
-import numpy as np
-from nltk.corpus import stopwords
+from typing import List
+import nltk
 from nltk.tokenize import RegexpTokenizer
-import string
+from nltk.corpus import stopwords
 
+try:
+    from nltk.corpus import stopwords
+except ImportError:
+    nltk.download('stopwords')
+    from nltk.corpus import stopwords
 
+from modules.auth import RedditAuth
 
-
-class RedditAuth:
-    """
-    Class representing Reddit authentication credentials.
-    """
-    def __init__(self, client_secret: str, user_agent: str, client_id: str) -> None:
-        """
-        Initialize a RedditAuth object.
         
-        Parameters:
-            client_secret (str): The client secret.
-            user_agent (str): The user agent.
-            client_id (str): The client ID.
-        """
-        self.client_secret = client_secret
-        self.user_agent = user_agent
-        self.client_id = client_id
-
-def set_vars():
+def set_vars() -> RedditAuth:
     """
     Set environment variables for Reddit authentication.
 
@@ -43,57 +32,16 @@ def set_vars():
     user_agent = os.environ.get("USER_AGENT")
     client_id = os.environ.get("CLIENT_ID")
 
-    reddit_auth = RedditAuth(
+    reddit_auth_setup = RedditAuth(
         client_secret=client_secret,
         user_agent=user_agent,
         client_id=client_id,
     )
-    return reddit_auth
-
-
-def show_metrics(full_corpus):
-    """
-    Prints various metrics about the given corpus.
-    
-    Parameters:
-        full_corpus (list): A list of documents in the corpus.
-    """
-    print('Data manipulation', '-'*20)
-    print('Corpus Length:', len(full_corpus))
-    
-    words = [len(doc.text.split(' ')) for doc in full_corpus]
-    phrases = [len(doc.text.split('.')) for doc in full_corpus]
-    
-    print('Number of words:', str(np.mean(words)))
-    print('Average phrases:', str(np.mean(phrases)))
-    print('Total words:', str(np.sum(words)))
-    
-    long_docs = [doc.text for doc in full_corpus if len(doc.text) > 20]
-    
-    print('Total long docs:', len(long_docs))
-    
-    full_string = ' '.join([doc.text for doc in full_corpus])
-    # print(full_string)
-
-
-def print_progress_bar(index, total, label):
-    """
-    Print a progress bar to the console.
-    
-    Parameters:
-        index (int): The current index.
-        total (int): The total number of iterations.
-        label (str): The label to display.
-    """
-    n_bar = 50  # Progress bar width
-    progress = index / total
-    sys.stdout.write('\r')
-    sys.stdout.write(f"[{'=' * int(n_bar * progress):{n_bar}s}] {int(100 * progress)}%  {label}")
-    sys.stdout.flush()
+    return reddit_auth_setup
 
 
 
-def clean_text_util(text:str) -> list:
+def clean_paragraph(text: str) -> List[str]:
     """
     Cleans the given text by removing special characters, punctuation, and stopwords.
 
@@ -101,7 +49,7 @@ def clean_text_util(text:str) -> list:
         text (str): The text to be cleaned.
 
     Returns:
-        list: The cleaned text as list.
+        List[str]: The cleaned text as list.
     """
 
     stopwords_set = set(stopwords.words('english'))
@@ -109,44 +57,67 @@ def clean_text_util(text:str) -> list:
     # Separing, removing all special characters and not used words in tokenized text
     token = RegexpTokenizer(r'''\w'|\w+|[^\w\s]''')
     tokens = token.tokenize(text)
-    tokens = list(token for token in tokens if token not in string.punctuation)
-    tokens = list(token for token in tokens if token not in stopwords_set)
-    tokens = list(token for token in tokens if len(token) > 2)
-    tokens = list(token.translate(str.maketrans('', '', string.punctuation)).lower() for token in tokens)
+    tokens = [token for token in tokens if token not in string.punctuation]
+    tokens = [token for token in tokens if token not in stopwords_set]
+    tokens = [token for token in tokens if len(token) > 2]
+    tokens = [token.translate(str.maketrans('', '', string.punctuation)).lower() for token in tokens]
     
     return tokens
 
 
-def singleton(class_) -> object:
+def clean_text(text: str) -> str:
     """
-    Decorator function that converts a class into a singleton.
+    Clean the given text by removing square brackets and their contents,
+    removing non-alphanumeric characters except for important symbols and spaces,
+    and removing extra spaces.
 
     Args:
-        class_: The class to be converted into a singleton.
+        text (str): The text to be cleaned.
 
     Returns:
-        The singleton instance of the class.
-
-    Example:
-        @singleton
-        class MyClass:
-            pass
-
-        obj1 = MyClass()
-        obj2 = MyClass()
-
-        assert obj1 is obj2
+        str: The cleaned text.
     """
-    instance = None
-    def getinstance(*args, **kwargs):
-        nonlocal instance
-        if instance is None:
-            instance = class_(*args, **kwargs)
-        return instance
-    def deleteinstance():
-        nonlocal instance
-        if instance is not None:
-            del instance
-            instance = None
-    getinstance.delete = deleteinstance
-    return getinstance
+    text = re.sub(r'\[.*?\]', '', text)  # Remove square brackets and their contents
+    text = re.sub(r"[^a-zA-Z0-9',?:!\s]", '', text)  # Remove non-alphanumeric characters
+    text = re.sub(r'\s+', ' ', text)  # Remove extra spaces
+    
+    return text
+
+def normalize_value(value: float, min_value: float, max_value: float) -> float:
+    """
+    Normalize a value between 0 and 1 based on the given minimum and maximum values.
+
+    Args:
+        value (float): The value to be normalized.
+        min_value (float): The minimum value of the range.
+        max_value (float): The maximum value of the range.
+
+    Returns:
+        float: The normalized value between 0 and 1.
+    """
+    if min_value == max_value:
+        return 0.5  
+    return (value - min_value) / (max_value - min_value)
+
+def label_from_normalized_value(normalized_value: float) -> int:
+    """
+    Assigns a label based on the given normalized value.
+    
+    0 - 0.3: Low similarity
+    0.3 - 0.6: Medium similarity
+    0.6 - 0.8: High similarity
+    0.8 - 1: Very high similarity
+
+    Args:
+        normalized_value (float): The normalized value to assign a label to.
+
+    Returns:
+        int: The label assigned to the normalized value.
+    """
+    if normalized_value < 0.3:
+        return 0
+    elif 0.4 <= normalized_value < 0.7:
+        return 1
+    else:
+        return 2
+

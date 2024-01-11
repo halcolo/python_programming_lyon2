@@ -1,25 +1,26 @@
 
-import unittest
 import datetime
+import unittest
+
 from modules.document import RedditDocument, ArxivDocument
 
 
 class TestRedditDocument(unittest.TestCase):
     def setUp(self):
         self.todays_time = datetime.datetime.now().timestamp()
-        self.todays_time = datetime.datetime.now().timestamp()
         self.title = 'test'
         self.author = 'test_author'
         self.date = datetime.datetime.fromtimestamp(self.todays_time)
         self.url = "https://test.com/"
         self.text = "lorem ipsum"
-        self.num_comments=2
+        self.num_comments = 2
         self.document = RedditDocument(
             title=self.title,
             date=self.date,
             author=self.author,
             url=self.url,
             text=self.text,
+            source='reddit',
             num_comments=self.num_comments,
         )
         
@@ -29,12 +30,13 @@ class TestRedditDocument(unittest.TestCase):
         self.assertEqual(self.document.author, 'test_author')
         self.assertEqual(self.document.url, 'https://test.com/')
         self.assertEqual(self.document.text, 'lorem ipsum')
+        self.assertEqual(self.document.source, 'reddit')
         self.assertEqual(self.document.num_comments, 2)
         
     def test_str(self):
         expected_output = f"{self.title}, by Authors: {self.author}, "\
             f"on Date: {self.date}, at URL: {self.url}, " \
-            f"with Text: {self.text}, " \
+            f"From: reddit, with Text: {self.text}, " \
             f"with {self.num_comments} comments"
         # print(str(self.document))
         self.assertEqual(str(self.document), expected_output)
@@ -53,6 +55,7 @@ class TestArxivDocument(unittest.TestCase):
             date=self.date,
             authors=[self.author],
             url=self.url,
+            source='arxiv',
             text=self.text
         )
         
@@ -62,11 +65,12 @@ class TestArxivDocument(unittest.TestCase):
         self.assertEqual(self.document.author, 'test_author')
         self.assertEqual(self.document.url, 'https://test.com/')
         self.assertEqual(self.document.text, 'lorem ipsum')
+        self.assertEqual(self.document.source, 'arxiv')
         
     def test_str(self):
         expected_output = f"{self.title}, by Authors: {self.author}, "\
             f"on Date: {self.date}, at URL: {self.url}, " \
-            f"with Text: {self.text}"
+            f"From: arxiv, with Text: {self.text}"
         self.assertEqual(str(self.document), expected_output)
         
 if __name__ == '__main__':
