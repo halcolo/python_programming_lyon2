@@ -1,9 +1,7 @@
 # Factory pattern
 from modules.reddit_api import RedditApi
 from modules.arxiv_api import ArxivApi
-from utils.tools import singleton
 
-# @singleton
 class DocumentFactory:
     """
     Factory class for creating documents based on the type of process.
@@ -33,8 +31,7 @@ class DocumentFactory:
             object: The created document object.
         """
         if self.type_process.lower() == 'reddit':
-            obj = RedditApi(
-                self.data['keyword'])
+            obj = RedditApi(self.data['keyword'])
             return obj
         if self.type_process.lower() == 'arxiv':
             return ArxivApi(

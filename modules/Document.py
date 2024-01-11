@@ -42,10 +42,7 @@ class Document:
             author = ' '.join(self.author)
         else:
             author = self.author
-        resp =  f"{self.title}, by Authors: {author}, "\
-                f"on Date: {self.date}, at URL: {self.url}, "\
-                f"with Text: {self.text}"
-        return resp
+        return f"{self.title}, by {author}"
 
 
 class RedditDocument(Document):
@@ -98,7 +95,7 @@ class ArxivDocument(Document):
             date (str): The date of the document.
             authors (list): The authors of the document.
             url (str): The URL of the document.
-            text (str): Abstract of the document.
+            text (str): The text of the document.
         """
         super().__init__(title, date, ', '.join(authors), url, text)
 
