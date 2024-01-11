@@ -1,8 +1,9 @@
-import unittest
-import json
-import config
-import datetime
 import time
+import datetime
+
+import unittest
+
+import config
 from modules.api import RedditApi
 from modules.document import RedditDocument
 
@@ -23,6 +24,7 @@ class TestRedditAPI(unittest.TestCase):
                     author='test_author',
                     url="https://test.com/",
                     text="lorem ipsum",
+                    source='reddit',
                     num_comments=0
                 )
 
